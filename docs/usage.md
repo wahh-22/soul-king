@@ -150,16 +150,28 @@ no window, and drives over a private pipe (no debugging port is opened).
 You sign in once, and the session stays in nu11signal's own browser
 profile. nu11signal never reads your password, tokens or cookies.
 
+**On Windows (WSL):** run `nu11signal --apple-music-login` from a terminal
+on the Windows desktop, not over SSH, so WSLg can show the sign-in window.
+Install `libpulse0` (`sudo apt install libpulse0`) for native Chrome's sound.
+On the first cold start, a retry may be needed while WSLg starts.
+
 **Requirements:** Google Chrome or Chromium, either one, with the Widevine
 CDM that plays protected music. Google Chrome ships with it. Chromium
 usually does not: add it (for example, copy Google Chrome's
 `WidevineCdm` directory next to the Chromium binary, as in
-`/usr/lib/chromium/WidevineCdm`); on ARM64, where Google ships no Linux
-Chrome, Chromium with Widevine added is the way. The browser is looked up
+`/usr/lib/chromium/WidevineCdm`). Google Chrome is available for Linux on
+both x86_64 and ARM64. The browser is looked up
 as `google-chrome`, `google-chrome-stable`, `chromium` and
 `chromium-browser` on `PATH`, then in the usual install directories;
-`NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. Snap and
-Flatpak browsers are not supported.
+`NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. If none is
+usable, Google Chrome from Flathub (`com.google.Chrome`, x86_64 only) is
+supported too: `flatpak` must be on `PATH` and its bundled Widevine must
+be present. User installs are preferred over system installs. Snap
+Chromium and Chromium Flatpaks (including UngoogledChromium) remain
+unsupported and have no Widevine bundled. On Ubuntu, use Google Chrome's
+`.deb` from [google.com/chrome](https://www.google.com/chrome/) or its
+Flathub package instead of Chromium Snap; on ARM64, use a distribution
+Chromium with Widevine.
 
 For containers and unusual setups, `NU11SIGNAL_BROWSER_FLAGS` adds
 space-separated flags to the browser's command line, for both
@@ -186,8 +198,15 @@ containers.
    does on macOS.
 
 The profile lives in `~/.config/nu11signal/webplayer` (under
-`$XDG_CONFIG_HOME` when set), readable by you only; nu11signal refuses a
-profile directory that is open to other users and says how to fix it.
+`$XDG_CONFIG_HOME` when set). For Flathub Chrome it lives instead in
+`~/.var/app/com.google.Chrome/nu11signal-webplayer`, so the sandbox can
+see it and keep the session between runs. Both profiles are owner-only
+(0700); nu11signal refuses symlinked profiles or a profile directory open
+to other users and says how to fix it. Flatpak's first start can be slow
+(tens of seconds); the web player allows 60 seconds for Flatpak browser
+readiness and another 60 seconds for MusicKit. The command's current
+startup deadline still caps normal `nu11signal` startup at 30 seconds;
+`--apple-music-login` does not have that cap.
 Only one browser can use the profile at a time, so quit nu11signal before
 `--apple-music-login` and close the sign-in window before `nu11signal`;
 otherwise startup stops with `the Apple Music profile is in use; close

@@ -43,9 +43,29 @@ Linux nu11signal plays Apple Music through Apple's web player (experimental),
 beside your [local music files](usage.md#local-files).
 
 Apple Music needs a subscription and Google Chrome or Chromium with Widevine.
-Google Chrome ships with Widevine; Chromium needs it added. Google ships no
-Linux ARM64 Chrome, so use Chromium with Widevine added on ARM64. Local files
-work without a browser.
+Google Chrome ships with Widevine, on x86_64 and ARM64 alike; Chromium needs
+it added. Local files work without a browser.
+
+Native browsers also need `libpulse.so.0` for sound: install `libpulse0`
+(`sudo apt install libpulse0`) on Debian/Ubuntu, or `pulseaudio-libs`
+(`sudo dnf install pulseaudio-libs`) on Fedora. Chrome's `.deb` does not
+install it automatically; minimal systems such as WSL may lack it.
+Flatpak Chrome includes it in its runtime.
+
+Google Chrome from Flathub (`com.google.Chrome`) is supported on x86_64,
+with `flatpak` on `PATH` and its bundled Widevine present. Native browsers
+are preferred, then user Flatpak installs, then system Flatpak installs.
+Its persistent, owner-only (0700) profile is
+`~/.var/app/com.google.Chrome/nu11signal-webplayer`; native browsers use
+`~/.config/nu11signal/webplayer` (or `$XDG_CONFIG_HOME/nu11signal/webplayer`).
+The first Flatpak start can take tens of seconds. Sign-in allows extra
+time; normal startup currently still has a 30-second command deadline.
+
+Snap Chromium and Chromium Flatpaks (including UngoogledChromium) remain
+unsupported and have no Widevine bundled. On Ubuntu, install Google
+Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/) or
+its Flathub package instead of Chromium Snap; on ARM64, use a distribution
+Chromium with Widevine.
 
 After installing, sign in once:
 

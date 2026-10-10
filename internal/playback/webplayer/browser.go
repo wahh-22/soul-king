@@ -49,6 +49,10 @@ type Installation struct {
 	// distribution wrapper script), an install-directory binary, or the
 	// BrowserEnv override.
 	Path string
+	// Flatpak is the application ID to run via Path; empty for native browsers.
+	Flatpak string
+	// Profile overrides ProfileDir for a sandbox-visible, persistent profile.
+	Profile string
 	// Binary is the real browser binary Widevine was found for, after
 	// symlinks and wrapper scripts.
 	Binary string
@@ -56,6 +60,13 @@ type Installation struct {
 	Widevine string
 	// Reason explains the choice in one line, for diagnostics.
 	Reason string
+}
+
+// SandboxedBrowser identifies a sandboxed installation that is not usable.
+// Name is the Snap name or Flatpak application ID; Kind is "snap" or "flatpak".
+type SandboxedBrowser struct {
+	Name string
+	Kind string
 }
 
 // NoBrowserError reports that no Chrome or Chromium with Widevine for this
@@ -66,9 +77,27 @@ type NoBrowserError struct {
 	// WithoutWidevine lists the browsers found that lack it, in preference
 	// order, so the message can say what to fix.
 	WithoutWidevine []string
+	// Sandboxed lists sandboxed installs that are unsupported or missing prerequisites.
+	Sandboxed []SandboxedBrowser
 }
 
 func (e *NoBrowserError) Error() string {
+	if len(e.Sandboxed) != 0 {
+		var found []string
+		for _, b := range e.Sandboxed {
+			switch {
+			case b.Kind == "snap":
+				found = append(found, "found Chromium as a Snap, which has no Widevine and cannot be driven by nu11signal")
+			case b.Name == "com.google.Chrome":
+				found = append(found, "found Google Chrome as a Flatpak, which cannot be used without flatpak on PATH and bundled Widevine for this architecture")
+			default:
+				found = append(found, "found "+b.Name+" as a Flatpak, which has no Widevine bundled and nu11signal cannot drive yet")
+			}
+		}
+		// Google's Linux packages cover x86_64 and ARM64 alike.
+		install := "install Google Chrome (.deb/.rpm from google.com/chrome) or a distribution Chromium with Widevine (e.g. chromium + libwidevinecdm0)"
+		return "webplayer: " + strings.Join(found, "; ") + "; " + install
+	}
 	if len(e.WithoutWidevine) == 0 {
 		return fmt.Sprintf("webplayer: no Google Chrome or Chromium found; install one with Widevine (%s) or set %s", e.Arch, BrowserEnv)
 	}
@@ -89,9 +118,8 @@ type flavor struct {
 	configDir string
 }
 
-// browserFlavors lists the supported browsers in preference order. Snap
-// and Flatpak installs are not covered: their browsers run sandboxed with
-// their own home and cannot take our pipe and profile as they are.
+// browserFlavors lists native browsers in preference order. Flatpak Chrome
+// is considered separately after these; Snap Chromium remains unsupported.
 func browserFlavors() []flavor {
 	return []flavor{
 		{
@@ -145,7 +173,9 @@ type discoverEnv struct {
 // BrowserEnv, when set, is the only candidate. Otherwise google-chrome,
 // google-chrome-stable, chromium and chromium-browser are looked up on
 // PATH, in that order, then the known install directories. Without a
-// usable browser the error is a *NoBrowserError.
+// usable native browser, Flatpak Google Chrome is considered (user before
+// system) if flatpak is on PATH and its deployment bundles Widevine.
+// Without a usable browser the error is a *NoBrowserError.
 func Discover() (Installation, error) {
 	home, _ := os.UserHomeDir() // without one, only bundled Widevine counts
 	return discover(discoverEnv{
@@ -171,6 +201,7 @@ func discover(env discoverEnv) (Installation, error) {
 		inst, _, ok := d.check(p, flavorOf(p))
 		if !ok {
 			missing.WithoutWidevine = []string{p}
+			missing.Sandboxed = d.sandboxedBrowsers()
 			return Installation{}, missing
 		}
 		inst.Reason = "from " + BrowserEnv + ": " + inst.Reason
@@ -210,7 +241,40 @@ func discover(env discoverEnv) (Installation, error) {
 			}
 		}
 	}
+	if inst, ok := d.flatpakChrome(); ok {
+		return inst, nil
+	}
+	missing.Sandboxed = d.sandboxedBrowsers()
 	return Installation{}, missing
+}
+
+const flatpakChromeID = "com.google.Chrome"
+
+// flatpakChrome reads deployment markers and bundled CDM files only; it
+// never runs Flatpak during discovery. The active symlink selects the
+// currently deployed version, not an old commit left on disk.
+func (d discoverer) flatpakChrome() (Installation, bool) {
+	path, err := d.env.lookPath("flatpak")
+	if err != nil || d.platform == "" || d.env.home == "" {
+		return Installation{}, false
+	}
+	arch := map[string]string{"amd64": "x86_64", "arm64": "aarch64"}[d.env.goarch]
+	roots := []string{
+		filepath.Join(d.env.home, ".local/share/flatpak/app"),
+		"/var/lib/flatpak/app",
+	}
+	for _, root := range roots {
+		files := filepath.Join(root, flatpakChromeID, arch, "stable/active/files")
+		if cdm := d.cdmIn(filepath.Join(files, "extra/WidevineCdm")); cdm != "" {
+			return Installation{
+				Path: path, Flatpak: flatpakChromeID,
+				Binary: filepath.Join(files, "extra/chrome"), Widevine: cdm,
+				Profile: filepath.Join(d.env.home, ".var/app", flatpakChromeID, "nu11signal-webplayer"),
+				Reason:  "Google Chrome Flatpak with Widevine " + cdm,
+			}, true
+		}
+	}
+	return Installation{}, false
 }
 
 type discoverer struct {
@@ -228,6 +292,12 @@ func (d discoverer) check(launcher string, fl *flavor) (Installation, []string, 
 	real, err := d.env.fs.EvalSymlinks(launcher)
 	if err != nil {
 		real = launcher
+	}
+	// Even a component CDM in the host config does not make a sandboxed
+	// wrapper usable. Flatpak Chrome requires its dedicated discovery and
+	// launch path; Snap Chromium remains unsupported.
+	if d.sandboxedPath(launcher) || d.sandboxedPath(real) {
+		return Installation{}, []string{real}, false
 	}
 	binaries := []string{real}
 	if fl != nil {
@@ -295,6 +365,37 @@ func (d discoverer) componentCDM(dir string) string {
 		}
 	}
 	return ""
+}
+
+// sandboxedBrowsers inspects markers only; never run snap or flatpak.
+func (d discoverer) sandboxedBrowsers() []SandboxedBrowser {
+	var found []SandboxedBrowser
+	exists := func(p string) bool {
+		_, err := d.env.fs.Stat(p)
+		return err == nil
+	}
+	if exists("/snap/bin/chromium") || exists("/snap/chromium/current") {
+		found = append(found, SandboxedBrowser{Name: "chromium", Kind: "snap"})
+	}
+	for _, id := range []string{"org.chromium.Chromium", "com.google.Chrome", "com.github.Eloston.UngoogledChromium"} {
+		paths := []string{"/var/lib/flatpak/app/" + id, "/var/lib/flatpak/exports/bin/" + id}
+		if d.env.home != "" {
+			base := filepath.Join(d.env.home, ".local/share/flatpak")
+			paths = append(paths, filepath.Join(base, "app", id), filepath.Join(base, "exports/bin", id))
+		}
+		if slices.ContainsFunc(paths, exists) {
+			found = append(found, SandboxedBrowser{Name: id, Kind: "flatpak"})
+		}
+	}
+	return found
+}
+
+func (d discoverer) sandboxedPath(p string) bool {
+	roots := []string{"/snap/", "/var/lib/flatpak/"}
+	if d.env.home != "" {
+		roots = append(roots, filepath.Join(d.env.home, ".local/share/flatpak")+"/")
+	}
+	return slices.ContainsFunc(roots, func(root string) bool { return strings.HasPrefix(p, root) })
 }
 
 func (d discoverer) executable(p string) bool {
@@ -386,7 +487,15 @@ func profileDir(getenv func(string) string, home string) (string, error) {
 	if base == "" {
 		return "", errors.New("webplayer: no config directory (neither XDG_CONFIG_HOME nor a home directory is set)")
 	}
-	dir := filepath.Join(base, "nu11signal", "webplayer")
+	return ensureProfileDir(filepath.Join(base, "nu11signal", "webplayer"))
+}
+
+// ensureProfileDir applies the same session privacy checks to native and
+// Flatpak profiles.
+func ensureProfileDir(dir string) (string, error) {
+	if !filepath.IsAbs(dir) {
+		return "", errors.New("webplayer: profile directory must be absolute")
+	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("webplayer: profile directory: %w", err)
 	}
@@ -406,6 +515,8 @@ func profileDir(getenv func(string) string, home string) (string, error) {
 const (
 	// DefaultReadyTimeout bounds Launch's wait for the browser to answer.
 	DefaultReadyTimeout = 30 * time.Second
+	// FlatpakReadyTimeout allows for a slow cold start of Flatpak Chrome.
+	FlatpakReadyTimeout = 60 * time.Second
 	// DefaultCloseTimeout is Close's grace period after Browser.close.
 	DefaultCloseTimeout = 5 * time.Second
 	// closeCallTimeout bounds the Browser.close command itself, for a
@@ -420,6 +531,8 @@ const (
 type Options struct {
 	// Browser is the executable to start (see Discover).
 	Browser string
+	// Flatpak is the application ID for a Flatpak launcher, or empty.
+	Flatpak string
 	// Profile is the absolute --user-data-dir (see ProfileDir).
 	Profile string
 	// URL is the page to open; empty leaves the browser's default.
@@ -449,7 +562,11 @@ type Options struct {
 // (never a port), the given profile, no first-run or keyring prompts, and
 // media that keeps playing without a gesture while the page is hidden.
 func browserArgs(opts Options) []string {
-	args := []string{
+	var args []string
+	if opts.Flatpak != "" {
+		args = append(args, "run", opts.Flatpak)
+	}
+	args = append(args, []string{
 		"--remote-debugging-pipe",
 		"--user-data-dir=" + opts.Profile,
 		"--no-first-run",
@@ -460,7 +577,7 @@ func browserArgs(opts Options) []string {
 		"--disable-renderer-backgrounding",
 		"--disable-background-timer-throttling",
 		"--hide-crash-restore-bubble",
-	}
+	}...)
 	if opts.Headless {
 		args = append(args, "--headless=new")
 	}
@@ -475,6 +592,8 @@ func validateOptions(opts Options) error {
 	switch {
 	case opts.Browser == "":
 		return errors.New("webplayer: no browser executable")
+	case opts.Flatpak != "" && opts.Flatpak != flatpakChromeID:
+		return fmt.Errorf("webplayer: unsupported Flatpak %q", opts.Flatpak)
 	case !filepath.IsAbs(opts.Profile):
 		return fmt.Errorf("webplayer: profile %q is not an absolute directory", opts.Profile)
 	case strings.HasPrefix(opts.URL, "-"):
@@ -532,6 +651,9 @@ func Launch(ctx context.Context, opts Options) (*Browser, error) {
 	}
 	if opts.ReadyTimeout <= 0 {
 		opts.ReadyTimeout = DefaultReadyTimeout
+		if opts.Flatpak != "" {
+			opts.ReadyTimeout = FlatpakReadyTimeout
+		}
 	}
 	if opts.CloseTimeout <= 0 {
 		opts.CloseTimeout = DefaultCloseTimeout
@@ -645,7 +767,7 @@ func (b *Browser) shutdown(ctx context.Context) error {
 }
 
 // kill stops the browser's whole process group and waits until it is
-// reaped.
+// reaped. This also covers bwrap and Chrome children spawned by flatpak run.
 func (b *Browser) kill() {
 	_ = killGroup(b.pid)
 	<-b.done

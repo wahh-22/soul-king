@@ -14,6 +14,27 @@ import (
 	"github.com/wahh-22/nu11signal/internal/playback/playbacktest"
 )
 
+type warningBackend struct{ *playbacktest.Fake }
+
+func (*warningBackend) StartupWarning() string {
+	return "apple music has no sound: install libpulse (libpulse0)"
+}
+
+func TestStartupWarningReportedOnce(t *testing.T) {
+	apple := &warningBackend{playbacktest.New()}
+	p := New(apple, playbacktest.New())
+	defer p.Close()
+	if err := recv(t, p.Errors()); err.Error() != apple.StartupWarning() {
+		t.Fatalf("notice = %v", err)
+	}
+	for range 2 {
+		if _, err := p.Authorize(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	quiet(t, p.Errors())
+}
+
 var ctx = context.Background()
 
 const (

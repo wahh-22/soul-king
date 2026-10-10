@@ -171,6 +171,89 @@ func noBrowser(t *testing.T, err error) *NoBrowserError {
 	return nb
 }
 
+func TestDiscoverUserFlatpakChrome(t *testing.T) {
+	tr := newTree(t)
+	tr.cdm("/home/u/.local/share/flatpak/app/com.google.Chrome/x86_64/stable/active/files/extra/WidevineCdm", "linux_x64")
+	got, err := tr.discover(discoverCase{path: map[string]string{"flatpak": "/usr/bin/flatpak"}, goarch: "amd64"})
+	if err != nil {
+		t.Fatalf("user Flatpak Chrome should be usable: %v", err)
+	}
+	if got.Path != "/usr/bin/flatpak" || got.Flatpak != flatpakChromeID ||
+		got.Profile != "/home/u/.var/app/com.google.Chrome/nu11signal-webplayer" ||
+		!strings.Contains(got.Widevine, "active/files/extra/WidevineCdm") {
+		t.Fatalf("unexpected installation: %+v", got)
+	}
+}
+
+func TestDiscoverFlatpakChromeFallbacks(t *testing.T) {
+	user := "/home/u/.local/share/flatpak/app/com.google.Chrome/x86_64/stable"
+	system := "/var/lib/flatpak/app/com.google.Chrome/x86_64/stable"
+	for _, tc := range []struct {
+		name      string
+		user      bool
+		system    bool
+		noFlatpak bool
+		arm64     bool
+		native    bool
+		wantRoot  string
+	}{
+		{name: "system", system: true, wantRoot: system},
+		{name: "user preferred", user: true, system: true, wantRoot: user},
+		{name: "no binary", user: true, noFlatpak: true},
+		{name: "wrong architecture", user: true, arm64: true},
+		{name: "native preferred", user: true, native: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := newTree(t)
+			for root, installed := range map[string]bool{user: tc.user, system: tc.system} {
+				if installed {
+					tr.cdm(root+"/commit/files/extra/WidevineCdm", "linux_x64")
+					tr.link(root+"/active", "commit")
+				}
+			}
+			c := discoverCase{path: map[string]string{}, goarch: "amd64"}
+			if !tc.noFlatpak {
+				c.path["flatpak"] = "/usr/bin/flatpak"
+			}
+			if tc.arm64 {
+				c.goarch = "arm64"
+			}
+			if tc.native {
+				tr.exe("/opt/google/chrome/chrome")
+				tr.cdm("/opt/google/chrome/WidevineCdm", "linux_x64")
+			}
+			got, err := tr.discover(c)
+			if tc.noFlatpak || tc.arm64 {
+				nb := noBrowser(t, err)
+				if !slices.Contains(nb.Sandboxed, SandboxedBrowser{Name: flatpakChromeID, Kind: "flatpak"}) {
+					t.Fatalf("Flatpak hint lost: %+v", nb)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.native {
+				if got.Path != "/opt/google/chrome/chrome" || got.Flatpak != "" {
+					t.Fatalf("native Chrome should win: %+v", got)
+				}
+			} else if got.Flatpak != flatpakChromeID || !strings.HasPrefix(got.Widevine, tc.wantRoot+"/active/") {
+				t.Fatalf("wrong Flatpak installation: %+v", got)
+			}
+		})
+	}
+}
+
+func TestDiscoverChromiumFlatpakRemainsUnsupported(t *testing.T) {
+	tr := newTree(t)
+	tr.cdm("/home/u/.local/share/flatpak/app/org.chromium.Chromium/x86_64/stable/active/files/extra/WidevineCdm", "linux_x64")
+	_, err := tr.discover(discoverCase{path: map[string]string{"flatpak": "/usr/bin/flatpak"}, goarch: "amd64"})
+	nb := noBrowser(t, err)
+	if !strings.Contains(nb.Error(), "org.chromium.Chromium") || !strings.Contains(nb.Error(), "no Widevine bundled") {
+		t.Fatalf("unsupported Chromium hint lost: %v", nb)
+	}
+}
+
 func TestDiscoverChromiumWithWidevineNextToRealBinary(t *testing.T) {
 	tr := newTree(t)
 	tr.exe("/usr/bin/chromium") // Debian's wrapper script
@@ -365,6 +448,122 @@ func TestDiscoverInstallDirWithoutPathEntry(t *testing.T) {
 	}
 }
 
+func TestDiscoverSnapHint(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	tr.file("/snap/chromium/current/marker", 0o644)
+	_, err := tr.discover(discoverCase{goarch: "amd64"})
+	nb := noBrowser(t, err)
+	for _, want := range []string{"Snap", "no Widevine", "cannot be driven", "google.com/chrome", ".deb/.rpm", "libwidevinecdm0"} {
+		if !strings.Contains(nb.Error(), want) {
+			t.Errorf("error %q should mention %q", nb.Error(), want)
+		}
+	}
+}
+
+func TestDiscoverSandboxedMarkers(t *testing.T) {
+	for _, marker := range []string{
+		"/snap/bin/chromium", "/snap/chromium/current",
+		"/var/lib/flatpak/app/org.chromium.Chromium",
+		"/var/lib/flatpak/app/com.google.Chrome",
+		"/var/lib/flatpak/app/com.github.Eloston.UngoogledChromium",
+		"/home/u/.local/share/flatpak/app/org.chromium.Chromium",
+		"/home/u/.local/share/flatpak/app/com.google.Chrome",
+		"/home/u/.local/share/flatpak/app/com.github.Eloston.UngoogledChromium",
+		"/var/lib/flatpak/exports/bin/com.google.Chrome",
+	} {
+		t.Run(marker, func(t *testing.T) {
+			tr := newTree(t)
+			if strings.Contains(marker, "/bin/") {
+				tr.exe(marker)
+			} else {
+				tr.file(marker+"/marker", 0o644)
+			}
+			_, err := tr.discover(discoverCase{goarch: "amd64"})
+			nb := noBrowser(t, err)
+			if len(nb.Sandboxed) != 1 {
+				t.Fatalf("Sandboxed = %+v", nb.Sandboxed)
+			}
+			wantName, wantKind := filepath.Base(marker), "flatpak"
+			if strings.HasPrefix(marker, "/snap/") {
+				wantName, wantKind = "chromium", "snap"
+			}
+			if nb.Sandboxed[0] != (SandboxedBrowser{Name: wantName, Kind: wantKind}) {
+				t.Fatalf("Sandboxed = %+v", nb.Sandboxed)
+			}
+			if !strings.Contains(nb.Error(), "cannot") || !strings.Contains(nb.Error(), ".deb/.rpm") {
+				t.Fatalf("unhelpful error: %v", nb)
+			}
+			if wantName == "com.google.Chrome" && strings.Contains(nb.Error(), "no Widevine") {
+				t.Fatalf("Flatpak Chrome includes Widevine: %v", nb)
+			}
+		})
+	}
+}
+
+func TestDiscoverSandboxedNeverChosen(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	tr.cdm("/home/u/.config/chromium/WidevineCdm/1.0", "linux_x64")
+	c := discoverCase{goarch: "amd64", path: map[string]string{"chromium": "/snap/bin/chromium"}}
+	_, err := tr.discover(c)
+	noBrowser(t, err)
+	c.vars = map[string]string{BrowserEnv: "/snap/bin/chromium"}
+	_, err = tr.discover(c)
+	noBrowser(t, err)
+	c.vars = nil
+	tr.exe("/opt/google/chrome/chrome")
+	tr.cdm("/opt/google/chrome/WidevineCdm", "linux_x64")
+	got, err := tr.discover(c)
+	if err != nil || got.Path != "/opt/google/chrome/chrome" {
+		t.Fatalf("real Chrome should win: %+v, %v", got, err)
+	}
+}
+
+func TestDiscoverFlatpakNeverChosen(t *testing.T) {
+	for _, base := range []string{"/var/lib/flatpak", "/home/u/.local/share/flatpak"} {
+		t.Run(base, func(t *testing.T) {
+			tr := newTree(t)
+			p := base + "/exports/bin/com.google.Chrome"
+			tr.exe(p)
+			tr.cdm(base+"/exports/bin/WidevineCdm", "linux_x64")
+			tr.link("/usr/bin/google-chrome", "../../"+strings.TrimPrefix(p, "/"))
+			_, err := tr.discover(discoverCase{goarch: "amd64", path: map[string]string{"google-chrome": "/usr/bin/google-chrome"}})
+			if nb := noBrowser(t, err); len(nb.Sandboxed) != 1 {
+				t.Fatalf("Sandboxed = %+v", nb.Sandboxed)
+			}
+		})
+	}
+}
+
+func TestDiscoverSandboxedDeduplicatesMarkers(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	tr.file("/snap/chromium/current/marker", 0o644)
+	tr.file("/var/lib/flatpak/app/com.google.Chrome/marker", 0o644)
+	tr.file("/home/u/.local/share/flatpak/app/com.google.Chrome/marker", 0o644)
+	_, err := tr.discover(discoverCase{goarch: "amd64"})
+	if nb := noBrowser(t, err); len(nb.Sandboxed) != 2 {
+		t.Fatalf("Sandboxed = %+v; want one per kind/name", nb.Sandboxed)
+	}
+}
+
+func TestDiscoverSandboxedARM64Hint(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	_, err := tr.discover(discoverCase{goarch: "arm64"})
+	// Google ships Chrome for Linux ARM64 too (its apt repository carries
+	// arm64 since 2026), so ARM64 gets the same advice.
+	for _, want := range []string{"Google Chrome", "distribution Chromium with Widevine"} {
+		if !strings.Contains(noBrowser(t, err).Error(), want) {
+			t.Fatalf("error %v should mention %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "no Linux ARM64 Chrome") {
+		t.Fatalf("must not claim there is no ARM64 Chrome: %v", err)
+	}
+}
+
 func TestDiscoverNothingInstalled(t *testing.T) {
 	tr := newTree(t)
 	_, err := tr.discover(discoverCase{goarch: "amd64"})
@@ -534,6 +733,27 @@ func waitDone(t *testing.T, b *Browser) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("browser not reaped")
 	}
+}
+
+func TestLaunchFlatpakWiresPipeArgsAndProcessGroup(t *testing.T) {
+	opts := fakeOptions(t, "ignore-close")
+	opts.Flatpak = flatpakChromeID
+	opts.CloseTimeout = 100 * time.Millisecond
+	b := launchFake(t, opts) // the test executable stands in for flatpak
+	fi := info(t, b)
+	native := opts
+	native.Flatpak = ""
+	want := append([]string{"run", flatpakChromeID}, browserArgs(native)...)
+	if !slices.Equal(fi.Args, want) {
+		t.Fatalf("Flatpak argv = %v; want %v", fi.Args, want)
+	}
+	if fi.PGID != b.PID() || fi.Child == 0 {
+		t.Fatalf("Flatpak launcher must lead its own group: %+v", fi)
+	}
+	if err := b.Close(context.Background()); err == nil || !strings.Contains(err.Error(), "killed") {
+		t.Fatalf("Close should kill the launcher group: %v", err)
+	}
+	waitGone(t, fi.Child)
 }
 
 func TestLaunchWiresPipeAndOwnProcessGroup(t *testing.T) {

@@ -72,7 +72,9 @@ type Evaluator interface {
 // they reach to the poller); from the first play on, a poller also
 // reports what the page says it plays (see States).
 type Player struct {
-	page Evaluator
+	// startupWarning is immutable after Open returns.
+	startupWarning string
+	page           Evaluator
 	// every is how often the page's now-playing report is polled.
 	every time.Duration
 	// now and pause are the clock and the wait between polls; tests
@@ -131,6 +133,9 @@ type Player struct {
 	browser browser
 	watched chan struct{}
 }
+
+// StartupWarning is an optional, non-fatal notice for the composite UI.
+func (p *Player) StartupWarning() string { return p.startupWarning }
 
 // browser is the part of a launched *Browser the player and Open use, so
 // tests can stand in for it.

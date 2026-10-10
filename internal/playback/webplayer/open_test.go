@@ -2,8 +2,10 @@ package webplayer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +14,166 @@ import (
 	"testing"
 	"time"
 )
+
+type pulseTestFS struct {
+	fileSystem
+	present string
+	checked func(string)
+}
+
+func (f pulseTestFS) Stat(path string) (fs.FileInfo, error) {
+	if f.checked != nil {
+		f.checked(path)
+	}
+	if path == f.present {
+		return pulseFileInfo{}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
+type pulseFileInfo struct{}
+
+func (pulseFileInfo) Name() string       { return "libpulse.so.0" }
+func (pulseFileInfo) Size() int64        { return 1 }
+func (pulseFileInfo) Mode() fs.FileMode  { return 0644 }
+func (pulseFileInfo) ModTime() time.Time { return time.Time{} }
+func (pulseFileInfo) IsDir() bool        { return false }
+func (pulseFileInfo) Sys() any           { return nil }
+
+func TestLoginMissingLibpulseWarns(t *testing.T) {
+	ev := &events{}
+	l := newLauncher(t, newFakeBrowser(ev), statusPage(ev, [2]bool{true, true}))
+	l.fs = pulseTestFS{}
+	var out strings.Builder
+	if err := l.login(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	want := "warning: libpulse is not installed, so the browser will play without sound; install it (Debian/Ubuntu: sudo apt install libpulse0; Fedora: sudo dnf install pulseaudio-libs)"
+	if !strings.Contains(out.String(), want+"\n") {
+		t.Fatalf("login output = %q; want libpulse warning %q", out.String(), want)
+	}
+}
+
+func TestLibpulsePresentInEachDirectory(t *testing.T) {
+	for _, dir := range libpulseDirs() {
+		t.Run(dir, func(t *testing.T) {
+			ev := &events{}
+			l := newLauncher(t, newFakeBrowser(ev), statusPage(ev, [2]bool{true, true}))
+			l.fs = pulseTestFS{present: filepath.Join(dir, "libpulse.so.0")}
+			var out strings.Builder
+			if err := l.login(context.Background(), &out); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(out.String(), "warning:") {
+				t.Fatalf("unexpected warning: %s", &out)
+			}
+			p, err := l.open(context.Background(), OpenOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer p.Close()
+			if p.StartupWarning() != "" {
+				t.Fatal(p.StartupWarning())
+			}
+		})
+	}
+}
+
+func TestOpenMissingLibpulseWithoutDisplay(t *testing.T) {
+	ev := &events{}
+	l := newLauncher(t, newFakeBrowser(ev), statusPage(ev, [2]bool{true, true}))
+	l.getenv = func(string) string { return "" }
+	l.fs = pulseTestFS{}
+	p, err := l.open(context.Background(), OpenOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	if p.StartupWarning() != "apple music has no sound: install libpulse (libpulse0)" {
+		t.Fatalf("warning = %q", p.StartupWarning())
+	}
+	if l.launched != 1 || !l.opts[0].Headless {
+		t.Fatal("headless launch was prevented")
+	}
+}
+
+func TestNonLinuxSkipsLibpulse(t *testing.T) {
+	ev := &events{}
+	l := newLauncher(t, newFakeBrowser(ev), statusPage(ev, [2]bool{true, true}))
+	l.goos = "darwin"
+	l.fs = pulseTestFS{checked: func(string) { t.Fatal("non-Linux checked host libpulse") }}
+	var out strings.Builder
+	if err := l.login(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "warning:") {
+		t.Fatal(out.String())
+	}
+}
+
+func TestLoginNeedsDisplayBeforeLaunch(t *testing.T) {
+	ev := &events{}
+	l := newLauncher(t, newFakeBrowser(ev), statusPage(ev, [2]bool{true, true}))
+	l.getenv = func(string) string { return "" }
+	err := l.login(context.Background(), &strings.Builder{})
+	if err == nil || !strings.Contains(err.Error(), "no display: run nu11signal --apple-music-login") || !strings.Contains(err.Error(), "not over SSH") {
+		t.Fatalf("login error = %v", err)
+	}
+	if l.launched != 0 {
+		t.Fatal("launched without a display")
+	}
+}
+
+func TestLoginWaylandOnly(t *testing.T) {
+	ev := &events{}
+	l := newLauncher(t, newFakeBrowser(ev), statusPage(ev, [2]bool{true, true}))
+	l.getenv = func(key string) string {
+		if key == "WAYLAND_DISPLAY" {
+			return "wayland-0"
+		}
+		return ""
+	}
+	if err := l.login(context.Background(), &strings.Builder{}); err != nil {
+		t.Fatal(err)
+	}
+	if l.launched != 1 {
+		t.Fatal("Wayland display was refused")
+	}
+}
+
+func TestLoginEarlyBrowserGoneFriendly(t *testing.T) {
+	for _, stage := range []string{"launch", "attach", "status"} {
+		t.Run(stage, func(t *testing.T) {
+			ev := &events{}
+			b := newFakeBrowser(ev)
+			page := newPage()
+			l := newLauncher(t, b, page)
+			switch stage {
+			case "launch":
+				l.launch = func(context.Context, Options) (browser, error) { return nil, ErrBrowserGone }
+			case "attach":
+				l.attach = func(context.Context, *Client) (Evaluator, error) { return nil, ErrBrowserGone }
+			case "status":
+				page.setHandle(func(call) (any, error) { return nil, ErrBrowserGone })
+			}
+			err := l.login(context.Background(), &strings.Builder{})
+			if !errors.Is(err, ErrBrowserGone) || !strings.Contains(err.Error(), "no display:") || !strings.Contains(err.Error(), "retry") || strings.Contains(err.Error(), ErrBrowserGone.Error()) {
+				t.Fatalf("login error = %v", err)
+			}
+		})
+	}
+}
+
+func TestVisibleLaunchErrorLeavesOtherFailuresAlone(t *testing.T) {
+	for _, err := range []error{ErrProfileInUse, context.Canceled, errors.New("offline")} {
+		if got := visibleLaunchError(err, nil, time.Second, context.Background()); got != err {
+			t.Fatalf("changed %v to %v", err, got)
+		}
+	}
+	if got := visibleLaunchError(ErrBrowserGone, nil, 6*time.Second, context.Background()); got != ErrBrowserGone {
+		t.Fatal("late exit mislabeled as display failure")
+	}
+}
 
 // events is an ordered log shared by a fake browser and its page.
 type events struct {
@@ -100,12 +262,19 @@ func newLauncher(t *testing.T, b *fakeBrowser, page Evaluator) *fakeLauncher {
 	profile := t.TempDir()
 	f := &fakeLauncher{}
 	f.launcher = launcher{
+		fs:   pulseTestFS{present: "/lib/x86_64-linux-gnu/libpulse.so.0"},
+		goos: "linux",
 		discover: func() (Installation, error) {
 			return Installation{Path: "/usr/bin/google-chrome", Binary: "/opt/google/chrome/chrome"}, nil
 		},
 		profileDir: func() (string, error) { return profile, nil },
 		inUse:      func(string) bool { return false },
-		getenv:     func(string) string { return "" },
+		getenv: func(key string) string {
+			if key == "DISPLAY" {
+				return ":0"
+			}
+			return ""
+		},
 		launch: func(_ context.Context, opts Options) (browser, error) {
 			f.opts = append(f.opts, opts)
 			f.launched++
@@ -118,6 +287,123 @@ func newLauncher(t *testing.T, b *fakeBrowser, page Evaluator) *fakeLauncher {
 		loginTimeout: 2 * time.Second,
 	}
 	return f
+}
+
+type observingPage struct {
+	Evaluator
+	observe func(context.Context, string)
+}
+
+func (p observingPage) Evaluate(ctx context.Context, expr string) (json.RawMessage, error) {
+	p.observe(ctx, expr)
+	return p.Evaluator.Evaluate(ctx, expr)
+}
+
+func TestOpenAndLoginFlatpakProfileAndTimeout(t *testing.T) {
+	for _, login := range []bool{false, true} {
+		t.Run(fmt.Sprintf("login=%v", login), func(t *testing.T) {
+			home := t.TempDir()
+			profile := filepath.Join(home, ".var/app/com.google.Chrome/nu11signal-webplayer")
+			ev := &events{}
+			page := statusPage(ev, [2]bool{true, true})
+			l := newLauncher(t, newFakeBrowser(ev), page)
+			l.discover = func() (Installation, error) {
+				return Installation{Path: "/usr/bin/flatpak", Flatpak: flatpakChromeID, Profile: profile}, nil
+			}
+			l.fs = pulseTestFS{checked: func(string) { t.Fatal("Flatpak checked host libpulse") }}
+			l.profileDir = func() (string, error) {
+				t.Fatal("Flatpak must not use the host config profile")
+				return "", nil
+			}
+			l.inUse = func(got string) bool {
+				if got != profile {
+					t.Fatalf("lock checked on %q; want %q", got, profile)
+				}
+				return false
+			}
+			checkedTimeout := false
+			l.attach = func(context.Context, *Client) (Evaluator, error) {
+				return observingPage{Evaluator: page, observe: func(ctx context.Context, expr string) {
+					if !strings.Contains(expr, namespace+".status(") {
+						return
+					}
+					deadline, ok := ctx.Deadline()
+					if !ok || time.Until(deadline) < 59*time.Second || time.Until(deadline) > 60*time.Second {
+						t.Errorf("Flatpak MusicKit wait must allow 60s; deadline %v", deadline)
+					}
+					checkedTimeout = true
+				}}, nil
+			}
+			if login {
+				if err := l.login(context.Background(), &strings.Builder{}); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				p, err := l.open(context.Background(), OpenOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer p.Close()
+			}
+			if !checkedTimeout || len(l.opts) != 1 || l.opts[0].Profile != profile ||
+				l.opts[0].Flatpak != flatpakChromeID || l.opts[0].ReadyTimeout != 60*time.Second {
+				t.Fatalf("Flatpak startup options = %+v; timeout checked=%v", l.opts, checkedTimeout)
+			}
+			fi, err := os.Stat(profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fi.Mode().Perm() != 0o700 {
+				t.Fatalf("profile permissions = %04o", fi.Mode().Perm())
+			}
+		})
+	}
+}
+
+func TestFlatpakProfileRejectsUnsafeOrLockedDirectory(t *testing.T) {
+	for _, kind := range []string{"permissions", "symlink", "locked"} {
+		t.Run(kind, func(t *testing.T) {
+			profile := filepath.Join(t.TempDir(), ".var/app/com.google.Chrome/nu11signal-webplayer")
+			if err := os.MkdirAll(filepath.Dir(profile), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if kind == "symlink" {
+				if err := os.Symlink(t.TempDir(), profile); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.Mkdir(profile, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "permissions" {
+					if err := os.Chmod(profile, 0o750); err != nil {
+						t.Fatal(err)
+					}
+				} else if err := os.Symlink("elsewhere-1234", filepath.Join(profile, singletonLock)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+			l.discover = func() (Installation, error) {
+				return Installation{Path: "/usr/bin/flatpak", Flatpak: flatpakChromeID, Profile: profile}, nil
+			}
+			l.inUse = profileLocked
+			for _, login := range []bool{false, true} {
+				var err error
+				if login {
+					err = l.login(context.Background(), &strings.Builder{})
+				} else {
+					_, err = l.open(context.Background(), OpenOptions{})
+				}
+				if err == nil || (kind == "locked" && !errors.Is(err, ErrProfileInUse)) {
+					t.Fatalf("%s profile must be refused (login=%v): %v", kind, login, err)
+				}
+			}
+			if l.launched != 0 {
+				t.Fatal("unsafe or locked profile launched")
+			}
+		})
+	}
 }
 
 func TestOpenLaunchesHeadlessWaitsUntilReadyAndHides(t *testing.T) {
@@ -254,6 +540,9 @@ func TestOpenWrapsABrowserThatDoesNotStart(t *testing.T) {
 // flagsEnv answers BrowserFlagsEnv with v.
 func flagsEnv(v string) func(string) string {
 	return func(name string) string {
+		if name == "DISPLAY" {
+			return ":0"
+		}
 		if name == BrowserFlagsEnv {
 			return v
 		}
@@ -351,6 +640,28 @@ func TestProfileLocked(t *testing.T) {
 				t.Fatalf("profileLocked(%s) = %v; want %v", tt.target, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestLoginPrintsNoBrowserHint(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	_, missing := tr.discover(discoverCase{goarch: "amd64"})
+	l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+	l.discover = func() (Installation, error) { return Installation{}, missing }
+	var out strings.Builder
+	if err := l.login(context.Background(), &out); !errors.Is(err, ErrNoBrowser) {
+		t.Fatalf("login = %v; want ErrNoBrowser", err)
+	}
+	if out.String() != missing.Error()+"\n" {
+		t.Fatalf("output = %q; want %q", out.String(), missing.Error()+"\n")
+	}
+	out.Reset()
+	if _, err := l.open(context.Background(), OpenOptions{Stderr: &out}); !errors.Is(err, ErrNoBrowser) {
+		t.Fatalf("open = %v; want ErrNoBrowser", err)
+	}
+	if out.Len() != 0 || l.launched != 0 {
+		t.Fatal("normal startup must remain silent and neither path may launch")
 	}
 }
 
