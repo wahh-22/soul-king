@@ -46,9 +46,20 @@ Apple Music needs a subscription and Google Chrome or Chromium with Widevine.
 Google Chrome ships with Widevine, on x86_64 and ARM64 alike; Chromium needs
 it added. Local files work without a browser.
 
-Snap/Flatpak Chrome and Chromium are not supported yet. On Ubuntu, install
-Google Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/)
-instead of the Chromium Snap; on ARM64, use a distribution Chromium with Widevine.
+Google Chrome from Flathub (`com.google.Chrome`) is supported on x86_64,
+with `flatpak` on `PATH` and its bundled Widevine present. Native browsers
+are preferred, then user Flatpak installs, then system Flatpak installs.
+Its persistent, owner-only (0700) profile is
+`~/.var/app/com.google.Chrome/nu11signal-webplayer`; native browsers use
+`~/.config/nu11signal/webplayer` (or `$XDG_CONFIG_HOME/nu11signal/webplayer`).
+The first Flatpak start can take tens of seconds. Sign-in allows extra
+time; normal startup currently still has a 30-second command deadline.
+
+Snap Chromium and Chromium Flatpaks (including UngoogledChromium) remain
+unsupported and have no Widevine bundled. On Ubuntu, install Google
+Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/) or
+its Flathub package instead of Chromium Snap; on ARM64, use a distribution
+Chromium with Widevine.
 
 After installing, sign in once:
 

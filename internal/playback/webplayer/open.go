@@ -188,7 +188,7 @@ func (l launcher) login(ctx context.Context, out io.Writer) error {
 // live browser holds, before the launch or after a browser that failed to
 // start was closed, is ErrProfileInUse; any other launch or attach
 // failure wraps ErrLaunchFailed.
-func (l launcher) start(ctx context.Context, headless bool, stderr io.Writer) (browser, Evaluator, error) {
+func (l *launcher) start(ctx context.Context, headless bool, stderr io.Writer) (browser, Evaluator, error) {
 	inst, err := l.discover()
 	if err != nil {
 		return nil, nil, err
@@ -197,14 +197,24 @@ func (l launcher) start(ctx context.Context, headless bool, stderr io.Writer) (b
 	if err != nil {
 		return nil, nil, err
 	}
-	profile, err := l.profileDir()
+	var profile string
+	if inst.Flatpak != "" {
+		profile, err = ensureProfileDir(inst.Profile)
+		l.readyTimeout = max(l.readyTimeout, FlatpakReadyTimeout)
+	} else {
+		profile, err = l.profileDir()
+	}
 	if err != nil {
 		return nil, nil, err
 	}
 	if l.inUse(profile) {
 		return nil, nil, ErrProfileInUse
 	}
-	b, err := l.launch(ctx, Options{Browser: inst.Path, Profile: profile, URL: URL, Headless: headless, ExtraFlags: flags, Stderr: stderr})
+	readyTimeout := DefaultReadyTimeout
+	if inst.Flatpak != "" {
+		readyTimeout = FlatpakReadyTimeout
+	}
+	b, err := l.launch(ctx, Options{Browser: inst.Path, Flatpak: inst.Flatpak, Profile: profile, URL: URL, Headless: headless, ExtraFlags: flags, Stderr: stderr, ReadyTimeout: readyTimeout})
 	if err != nil {
 		// A browser started on a profile held elsewhere hands over to
 		// that one and exits, which Launch reports as no answer.

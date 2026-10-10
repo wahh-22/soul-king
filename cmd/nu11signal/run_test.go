@@ -604,3 +604,11 @@ func TestRunUpdateCheckOptOuts(t *testing.T) {
 		t.Fatal("NU11SIGNAL_NO_UPDATE_CHECK=0 with update_check true turned the check off")
 	}
 }
+
+// A cold Flatpak Chrome may take FlatpakReadyTimeout to answer and as long
+// again for music.apple.com's MusicKit, so startup must allow both.
+func TestWebPlayerStartTimeoutCoversAFlatpakColdStart(t *testing.T) {
+	if want := 2 * webplayer.FlatpakReadyTimeout; webPlayerStartTimeout < want {
+		t.Fatalf("webPlayerStartTimeout = %v; want at least %v", webPlayerStartTimeout, want)
+	}
+}

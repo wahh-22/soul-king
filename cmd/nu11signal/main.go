@@ -75,8 +75,10 @@ func stampMismatch() bool {
 const startTimeout = 10 * time.Second
 
 // webPlayerStartTimeout bounds starting the web player until its page is
-// ready: a browser and music.apple.com take longer than the helper.
-const webPlayerStartTimeout = 30 * time.Second
+// ready: a browser and music.apple.com take longer than the helper. It is an
+// outer bound for a cold Flatpak Chrome (its browser and page waits);
+// webplayer's own, shorter waits end a regular browser's start sooner.
+const webPlayerStartTimeout = 2 * time.Minute
 
 // calmEnv set to 1 starts with the signal effects off, as --calm does.
 const calmEnv = "NU11SIGNAL_CALM"

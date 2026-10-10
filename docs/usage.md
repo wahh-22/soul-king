@@ -158,11 +158,15 @@ usually does not: add it (for example, copy Google Chrome's
 both x86_64 and ARM64. The browser is looked up
 as `google-chrome`, `google-chrome-stable`, `chromium` and
 `chromium-browser` on `PATH`, then in the usual install directories;
-`NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. Snap and
-Flatpak Chrome/Chromium are not supported yet: nu11signal cannot drive
-these sandboxed installs (Ubuntu's Chromium Snap also has no Widevine).
-On Ubuntu, install Google Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/)
-instead; on ARM64, use a distribution Chromium with Widevine.
+`NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. If none is
+usable, Google Chrome from Flathub (`com.google.Chrome`, x86_64 only) is
+supported too: `flatpak` must be on `PATH` and its bundled Widevine must
+be present. User installs are preferred over system installs. Snap
+Chromium and Chromium Flatpaks (including UngoogledChromium) remain
+unsupported and have no Widevine bundled. On Ubuntu, use Google Chrome's
+`.deb` from [google.com/chrome](https://www.google.com/chrome/) or its
+Flathub package instead of Chromium Snap; on ARM64, use a distribution
+Chromium with Widevine.
 
 For containers and unusual setups, `NU11SIGNAL_BROWSER_FLAGS` adds
 space-separated flags to the browser's command line, for both
@@ -189,8 +193,15 @@ containers.
    does on macOS.
 
 The profile lives in `~/.config/nu11signal/webplayer` (under
-`$XDG_CONFIG_HOME` when set), readable by you only; nu11signal refuses a
-profile directory that is open to other users and says how to fix it.
+`$XDG_CONFIG_HOME` when set). For Flathub Chrome it lives instead in
+`~/.var/app/com.google.Chrome/nu11signal-webplayer`, so the sandbox can
+see it and keep the session between runs. Both profiles are owner-only
+(0700); nu11signal refuses symlinked profiles or a profile directory open
+to other users and says how to fix it. Flatpak's first start can be slow
+(tens of seconds); the web player allows 60 seconds for Flatpak browser
+readiness and another 60 seconds for MusicKit. The command's current
+startup deadline still caps normal `nu11signal` startup at 30 seconds;
+`--apple-music-login` does not have that cap.
 Only one browser can use the profile at a time, so quit nu11signal before
 `--apple-music-login` and close the sign-in window before `nu11signal`;
 otherwise startup stops with `the Apple Music profile is in use; close

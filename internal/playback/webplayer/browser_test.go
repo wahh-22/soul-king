@@ -171,6 +171,89 @@ func noBrowser(t *testing.T, err error) *NoBrowserError {
 	return nb
 }
 
+func TestDiscoverUserFlatpakChrome(t *testing.T) {
+	tr := newTree(t)
+	tr.cdm("/home/u/.local/share/flatpak/app/com.google.Chrome/x86_64/stable/active/files/extra/WidevineCdm", "linux_x64")
+	got, err := tr.discover(discoverCase{path: map[string]string{"flatpak": "/usr/bin/flatpak"}, goarch: "amd64"})
+	if err != nil {
+		t.Fatalf("user Flatpak Chrome should be usable: %v", err)
+	}
+	if got.Path != "/usr/bin/flatpak" || got.Flatpak != flatpakChromeID ||
+		got.Profile != "/home/u/.var/app/com.google.Chrome/nu11signal-webplayer" ||
+		!strings.Contains(got.Widevine, "active/files/extra/WidevineCdm") {
+		t.Fatalf("unexpected installation: %+v", got)
+	}
+}
+
+func TestDiscoverFlatpakChromeFallbacks(t *testing.T) {
+	user := "/home/u/.local/share/flatpak/app/com.google.Chrome/x86_64/stable"
+	system := "/var/lib/flatpak/app/com.google.Chrome/x86_64/stable"
+	for _, tc := range []struct {
+		name      string
+		user      bool
+		system    bool
+		noFlatpak bool
+		arm64     bool
+		native    bool
+		wantRoot  string
+	}{
+		{name: "system", system: true, wantRoot: system},
+		{name: "user preferred", user: true, system: true, wantRoot: user},
+		{name: "no binary", user: true, noFlatpak: true},
+		{name: "wrong architecture", user: true, arm64: true},
+		{name: "native preferred", user: true, native: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := newTree(t)
+			for root, installed := range map[string]bool{user: tc.user, system: tc.system} {
+				if installed {
+					tr.cdm(root+"/commit/files/extra/WidevineCdm", "linux_x64")
+					tr.link(root+"/active", "commit")
+				}
+			}
+			c := discoverCase{path: map[string]string{}, goarch: "amd64"}
+			if !tc.noFlatpak {
+				c.path["flatpak"] = "/usr/bin/flatpak"
+			}
+			if tc.arm64 {
+				c.goarch = "arm64"
+			}
+			if tc.native {
+				tr.exe("/opt/google/chrome/chrome")
+				tr.cdm("/opt/google/chrome/WidevineCdm", "linux_x64")
+			}
+			got, err := tr.discover(c)
+			if tc.noFlatpak || tc.arm64 {
+				nb := noBrowser(t, err)
+				if !slices.Contains(nb.Sandboxed, SandboxedBrowser{Name: flatpakChromeID, Kind: "flatpak"}) {
+					t.Fatalf("Flatpak hint lost: %+v", nb)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.native {
+				if got.Path != "/opt/google/chrome/chrome" || got.Flatpak != "" {
+					t.Fatalf("native Chrome should win: %+v", got)
+				}
+			} else if got.Flatpak != flatpakChromeID || !strings.HasPrefix(got.Widevine, tc.wantRoot+"/active/") {
+				t.Fatalf("wrong Flatpak installation: %+v", got)
+			}
+		})
+	}
+}
+
+func TestDiscoverChromiumFlatpakRemainsUnsupported(t *testing.T) {
+	tr := newTree(t)
+	tr.cdm("/home/u/.local/share/flatpak/app/org.chromium.Chromium/x86_64/stable/active/files/extra/WidevineCdm", "linux_x64")
+	_, err := tr.discover(discoverCase{path: map[string]string{"flatpak": "/usr/bin/flatpak"}, goarch: "amd64"})
+	nb := noBrowser(t, err)
+	if !strings.Contains(nb.Error(), "org.chromium.Chromium") || !strings.Contains(nb.Error(), "no Widevine bundled") {
+		t.Fatalf("unsupported Chromium hint lost: %v", nb)
+	}
+}
+
 func TestDiscoverChromiumWithWidevineNextToRealBinary(t *testing.T) {
 	tr := newTree(t)
 	tr.exe("/usr/bin/chromium") // Debian's wrapper script
@@ -650,6 +733,27 @@ func waitDone(t *testing.T, b *Browser) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("browser not reaped")
 	}
+}
+
+func TestLaunchFlatpakWiresPipeArgsAndProcessGroup(t *testing.T) {
+	opts := fakeOptions(t, "ignore-close")
+	opts.Flatpak = flatpakChromeID
+	opts.CloseTimeout = 100 * time.Millisecond
+	b := launchFake(t, opts) // the test executable stands in for flatpak
+	fi := info(t, b)
+	native := opts
+	native.Flatpak = ""
+	want := append([]string{"run", flatpakChromeID}, browserArgs(native)...)
+	if !slices.Equal(fi.Args, want) {
+		t.Fatalf("Flatpak argv = %v; want %v", fi.Args, want)
+	}
+	if fi.PGID != b.PID() || fi.Child == 0 {
+		t.Fatalf("Flatpak launcher must lead its own group: %+v", fi)
+	}
+	if err := b.Close(context.Background()); err == nil || !strings.Contains(err.Error(), "killed") {
+		t.Fatalf("Close should kill the launcher group: %v", err)
+	}
+	waitGone(t, fi.Child)
 }
 
 func TestLaunchWiresPipeAndOwnProcessGroup(t *testing.T) {

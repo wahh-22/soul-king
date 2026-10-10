@@ -2,6 +2,7 @@ package webplayer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -118,6 +119,122 @@ func newLauncher(t *testing.T, b *fakeBrowser, page Evaluator) *fakeLauncher {
 		loginTimeout: 2 * time.Second,
 	}
 	return f
+}
+
+type observingPage struct {
+	Evaluator
+	observe func(context.Context, string)
+}
+
+func (p observingPage) Evaluate(ctx context.Context, expr string) (json.RawMessage, error) {
+	p.observe(ctx, expr)
+	return p.Evaluator.Evaluate(ctx, expr)
+}
+
+func TestOpenAndLoginFlatpakProfileAndTimeout(t *testing.T) {
+	for _, login := range []bool{false, true} {
+		t.Run(fmt.Sprintf("login=%v", login), func(t *testing.T) {
+			home := t.TempDir()
+			profile := filepath.Join(home, ".var/app/com.google.Chrome/nu11signal-webplayer")
+			ev := &events{}
+			page := statusPage(ev, [2]bool{true, true})
+			l := newLauncher(t, newFakeBrowser(ev), page)
+			l.discover = func() (Installation, error) {
+				return Installation{Path: "/usr/bin/flatpak", Flatpak: flatpakChromeID, Profile: profile}, nil
+			}
+			l.profileDir = func() (string, error) {
+				t.Fatal("Flatpak must not use the host config profile")
+				return "", nil
+			}
+			l.inUse = func(got string) bool {
+				if got != profile {
+					t.Fatalf("lock checked on %q; want %q", got, profile)
+				}
+				return false
+			}
+			checkedTimeout := false
+			l.attach = func(context.Context, *Client) (Evaluator, error) {
+				return observingPage{Evaluator: page, observe: func(ctx context.Context, expr string) {
+					if !strings.Contains(expr, namespace+".status(") {
+						return
+					}
+					deadline, ok := ctx.Deadline()
+					if !ok || time.Until(deadline) < 59*time.Second || time.Until(deadline) > 60*time.Second {
+						t.Errorf("Flatpak MusicKit wait must allow 60s; deadline %v", deadline)
+					}
+					checkedTimeout = true
+				}}, nil
+			}
+			if login {
+				if err := l.login(context.Background(), &strings.Builder{}); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				p, err := l.open(context.Background(), OpenOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer p.Close()
+			}
+			if !checkedTimeout || len(l.opts) != 1 || l.opts[0].Profile != profile ||
+				l.opts[0].Flatpak != flatpakChromeID || l.opts[0].ReadyTimeout != 60*time.Second {
+				t.Fatalf("Flatpak startup options = %+v; timeout checked=%v", l.opts, checkedTimeout)
+			}
+			fi, err := os.Stat(profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fi.Mode().Perm() != 0o700 {
+				t.Fatalf("profile permissions = %04o", fi.Mode().Perm())
+			}
+		})
+	}
+}
+
+func TestFlatpakProfileRejectsUnsafeOrLockedDirectory(t *testing.T) {
+	for _, kind := range []string{"permissions", "symlink", "locked"} {
+		t.Run(kind, func(t *testing.T) {
+			profile := filepath.Join(t.TempDir(), ".var/app/com.google.Chrome/nu11signal-webplayer")
+			if err := os.MkdirAll(filepath.Dir(profile), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if kind == "symlink" {
+				if err := os.Symlink(t.TempDir(), profile); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.Mkdir(profile, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "permissions" {
+					if err := os.Chmod(profile, 0o750); err != nil {
+						t.Fatal(err)
+					}
+				} else if err := os.Symlink("elsewhere-1234", filepath.Join(profile, singletonLock)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+			l.discover = func() (Installation, error) {
+				return Installation{Path: "/usr/bin/flatpak", Flatpak: flatpakChromeID, Profile: profile}, nil
+			}
+			l.inUse = profileLocked
+			for _, login := range []bool{false, true} {
+				var err error
+				if login {
+					err = l.login(context.Background(), &strings.Builder{})
+				} else {
+					_, err = l.open(context.Background(), OpenOptions{})
+				}
+				if err == nil || (kind == "locked" && !errors.Is(err, ErrProfileInUse)) {
+					t.Fatalf("%s profile must be refused (login=%v): %v", kind, login, err)
+				}
+			}
+			if l.launched != 0 {
+				t.Fatal("unsafe or locked profile launched")
+			}
+		})
+	}
 }
 
 func TestOpenLaunchesHeadlessWaitsUntilReadyAndHides(t *testing.T) {
