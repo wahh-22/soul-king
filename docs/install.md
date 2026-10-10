@@ -39,8 +39,22 @@ Apple Music access.
 ## Linux
 
 Releases include Linux builds for x86_64 (`amd64`) and ARM64 (`arm64`). On
-Linux nu11signal plays your [local music files](usage.md#local-files) only:
-Apple Music needs the macOS helper.
+Linux nu11signal plays Apple Music through Apple's web player (experimental),
+beside your [local music files](usage.md#local-files).
+
+Apple Music needs a subscription and Google Chrome or Chromium with Widevine.
+Google Chrome ships with Widevine; Chromium needs it added. Google ships no
+Linux ARM64 Chrome, so use Chromium with Widevine added on ARM64. Local files
+work without a browser.
+
+After installing, sign in once:
+
+```sh
+nu11signal --apple-music-login
+```
+
+Then run `nu11signal`. See [Apple Music on Linux](usage.md#apple-music-on-linux-experimental)
+for Widevine setup, browser selection and extra flags, and limitations.
 
 With [Homebrew on Linux](https://docs.brew.sh/Homebrew-on-Linux) (the
 formula; the nu11signal cask is macOS-only):
