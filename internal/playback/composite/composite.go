@@ -108,6 +108,12 @@ func New(primary, local playback.Player) *Player {
 	if primary != nil {
 		p.active = primary
 	}
+	// Optional startup hints are queued once, not on each authorization.
+	if h, ok := primary.(interface{ StartupWarning() string }); ok {
+		if warning := h.StartupWarning(); warning != "" {
+			p.notify(errors.New(warning))
+		}
+	}
 	p.life, p.end = context.WithCancel(context.Background())
 	for _, b := range p.backends() {
 		p.forward(b)

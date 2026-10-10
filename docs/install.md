@@ -46,6 +46,12 @@ Apple Music needs a subscription and Google Chrome or Chromium with Widevine.
 Google Chrome ships with Widevine, on x86_64 and ARM64 alike; Chromium needs
 it added. Local files work without a browser.
 
+Native browsers also need `libpulse.so.0` for sound: install `libpulse0`
+(`sudo apt install libpulse0`) on Debian/Ubuntu, or `pulseaudio-libs`
+(`sudo dnf install pulseaudio-libs`) on Fedora. Chrome's `.deb` does not
+install it automatically; minimal systems such as WSL may lack it.
+Flatpak Chrome includes it in its runtime.
+
 Google Chrome from Flathub (`com.google.Chrome`) is supported on x86_64,
 with `flatpak` on `PATH` and its bundled Widevine present. Native browsers
 are preferred, then user Flatpak installs, then system Flatpak installs.

@@ -150,6 +150,11 @@ no window, and drives over a private pipe (no debugging port is opened).
 You sign in once, and the session stays in nu11signal's own browser
 profile. nu11signal never reads your password, tokens or cookies.
 
+**On Windows (WSL):** run `nu11signal --apple-music-login` from a terminal
+on the Windows desktop, not over SSH, so WSLg can show the sign-in window.
+Install `libpulse0` (`sudo apt install libpulse0`) for native Chrome's sound.
+On the first cold start, a retry may be needed while WSLg starts.
+
 **Requirements:** Google Chrome or Chromium, either one, with the Widevine
 CDM that plays protected music. Google Chrome ships with it. Chromium
 usually does not: add it (for example, copy Google Chrome's

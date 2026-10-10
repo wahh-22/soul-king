@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -56,8 +57,11 @@ type OpenOptions struct {
 // launcher is what Open and Login depend on, so tests can stand in for
 // the browser.
 type launcher struct {
-	discover   func() (Installation, error)
-	profileDir func() (string, error)
+	fs             fileSystem
+	goos           string
+	startupWarning string
+	discover       func() (Installation, error)
+	profileDir     func() (string, error)
 	// inUse reports whether another live browser holds the profile.
 	inUse func(profile string) bool
 	// getenv reads BrowserFlagsEnv.
@@ -72,6 +76,8 @@ type launcher struct {
 
 func defaultLauncher() launcher {
 	return launcher{
+		fs:         osFileSystem{},
+		goos:       runtime.GOOS,
 		discover:   Discover,
 		profileDir: ProfileDir,
 		inUse:      profileLocked,
@@ -116,6 +122,7 @@ func (l launcher) open(ctx context.Context, opts OpenOptions) (*Player, error) {
 		return nil, err
 	}
 	p := New(page, opts.Player...)
+	p.startupWarning = l.startupWarning
 	p.own(b)
 	if _, err := l.waitReady(ctx, p); err != nil {
 		_ = p.Close()
@@ -140,13 +147,17 @@ func Login(ctx context.Context, out io.Writer) error {
 }
 
 func (l launcher) login(ctx context.Context, out io.Writer) error {
+	started := time.Now()
 	b, page, err := l.start(ctx, false, nil)
+	if l.startupWarning != "" {
+		fmt.Fprintln(out, libpulseLoginWarning)
+	}
 	if err != nil {
 		var missing *NoBrowserError
 		if errors.As(err, &missing) {
 			fmt.Fprintln(out, missing.Error())
 		}
-		return err
+		return visibleLaunchError(err, nil, time.Since(started), ctx)
 	}
 	// Browser.close shuts the browser down cleanly, so it saves the
 	// session to the profile first.
@@ -156,7 +167,7 @@ func (l launcher) login(ctx context.Context, out io.Writer) error {
 
 	authorized, err := l.waitReady(ctx, p)
 	if err != nil {
-		return err
+		return visibleLaunchError(err, b, time.Since(started), ctx)
 	}
 	if authorized {
 		fmt.Fprintln(out, "Already signed in to Apple Music. Run nu11signal to play.")
@@ -192,6 +203,13 @@ func (l *launcher) start(ctx context.Context, headless bool, stderr io.Writer) (
 	inst, err := l.discover()
 	if err != nil {
 		return nil, nil, err
+	}
+	l.startupWarning = ""
+	if l.goos == "linux" && inst.Flatpak == "" && !hasLibpulse(l.fs) {
+		l.startupWarning = "apple music has no sound: install libpulse (libpulse0)"
+	}
+	if !headless && l.getenv("DISPLAY") == "" && l.getenv("WAYLAND_DISPLAY") == "" {
+		return nil, nil, &displayError{}
 	}
 	flags, err := browserFlags(l.getenv)
 	if err != nil {
@@ -255,6 +273,52 @@ func (l launcher) waitReady(ctx context.Context, p *Player) (bool, error) {
 			return false, fmt.Errorf("%w within %s", ErrNotLoaded, l.readyTimeout)
 		}
 	}
+}
+
+const libpulseLoginWarning = "warning: libpulse is not installed, so the browser will play without sound; install it (Debian/Ubuntu: sudo apt install libpulse0; Fedora: sudo dnf install pulseaudio-libs)"
+
+func libpulseDirs() []string {
+	return []string{"/lib/x86_64-linux-gnu", "/usr/lib/x86_64-linux-gnu", "/lib/aarch64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64", "/usr/lib", "/lib64", "/lib"}
+}
+
+func hasLibpulse(files fileSystem) bool {
+	for _, dir := range libpulseDirs() {
+		if info, err := files.Stat(filepath.Join(dir, "libpulse.so.0")); err == nil && info.Mode().IsRegular() {
+			return true
+		}
+	}
+	return false
+}
+
+// displayError keeps the transport cause for errors.Is without showing a
+// confusing pipe error to someone trying to open the sign-in window.
+type displayError struct{ cause error }
+
+func (e *displayError) Error() string {
+	message := "no display: run nu11signal --apple-music-login in a desktop session (on WSL, from a terminal on the Windows desktop, not over SSH)"
+	if e.cause != nil {
+		message += "; on WSL the display may not be ready yet; retry after WSLg starts"
+	}
+	return message
+}
+func (e *displayError) Unwrap() error { return e.cause }
+
+func visibleLaunchError(err error, b browser, elapsed time.Duration, ctx context.Context) error {
+	if ctx.Err() != nil || elapsed > 5*time.Second || errors.Is(err, ErrProfileInUse) {
+		return err
+	}
+	gone := errors.Is(err, ErrBrowserGone)
+	if b != nil {
+		select {
+		case <-b.Done():
+			gone = true
+		default:
+		}
+	}
+	if gone {
+		return &displayError{cause: err}
+	}
+	return err
 }
 
 // profileLocked reports whether the profile's SingletonLock names a
