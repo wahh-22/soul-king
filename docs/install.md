@@ -43,9 +43,8 @@ Linux nu11signal plays Apple Music through Apple's web player (experimental),
 beside your [local music files](usage.md#local-files).
 
 Apple Music needs a subscription and Google Chrome or Chromium with Widevine.
-Google Chrome ships with Widevine; Chromium needs it added. Google ships no
-Linux ARM64 Chrome, so use Chromium with Widevine added on ARM64. Local files
-work without a browser.
+Google Chrome ships with Widevine, on x86_64 and ARM64 alike; Chromium needs
+it added. Local files work without a browser.
 
 Snap/Flatpak Chrome and Chromium are not supported yet. On Ubuntu, install
 Google Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/)

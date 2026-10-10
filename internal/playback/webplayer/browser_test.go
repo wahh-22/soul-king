@@ -469,13 +469,15 @@ func TestDiscoverSandboxedARM64Hint(t *testing.T) {
 	tr := newTree(t)
 	tr.exe("/snap/bin/chromium")
 	_, err := tr.discover(discoverCase{goarch: "arm64"})
-	for _, want := range []string{"no Linux ARM64 Chrome", "distribution Chromium with Widevine"} {
+	// Google ships Chrome for Linux ARM64 too (its apt repository carries
+	// arm64 since 2026), so ARM64 gets the same advice.
+	for _, want := range []string{"Google Chrome", "distribution Chromium with Widevine"} {
 		if !strings.Contains(noBrowser(t, err).Error(), want) {
 			t.Fatalf("error %v should mention %q", err, want)
 		}
 	}
-	if strings.Contains(err.Error(), ".deb/.rpm") {
-		t.Fatalf("must not recommend Chrome on ARM64: %v", err)
+	if strings.Contains(err.Error(), "no Linux ARM64 Chrome") {
+		t.Fatalf("must not claim there is no ARM64 Chrome: %v", err)
 	}
 }
 

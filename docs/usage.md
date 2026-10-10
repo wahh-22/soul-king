@@ -154,8 +154,8 @@ profile. nu11signal never reads your password, tokens or cookies.
 CDM that plays protected music. Google Chrome ships with it. Chromium
 usually does not: add it (for example, copy Google Chrome's
 `WidevineCdm` directory next to the Chromium binary, as in
-`/usr/lib/chromium/WidevineCdm`); on ARM64, where Google ships no Linux
-Chrome, Chromium with Widevine added is the way. The browser is looked up
+`/usr/lib/chromium/WidevineCdm`). Google Chrome is available for Linux on
+both x86_64 and ARM64. The browser is looked up
 as `google-chrome`, `google-chrome-stable`, `chromium` and
 `chromium-browser` on `PATH`, then in the usual install directories;
 `NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. Snap and

@@ -90,10 +90,8 @@ func (e *NoBrowserError) Error() string {
 				found = append(found, "found "+b.Name+" as a Flatpak, which has no Widevine bundled and nu11signal cannot drive yet")
 			}
 		}
+		// Google's Linux packages cover x86_64 and ARM64 alike.
 		install := "install Google Chrome (.deb/.rpm from google.com/chrome) or a distribution Chromium with Widevine (e.g. chromium + libwidevinecdm0)"
-		if e.Arch == "linux_arm64" {
-			install = "Google ships no Linux ARM64 Chrome; use a distribution Chromium with Widevine"
-		}
 		return "webplayer: " + strings.Join(found, "; ") + "; " + install
 	}
 	if len(e.WithoutWidevine) == 0 {
