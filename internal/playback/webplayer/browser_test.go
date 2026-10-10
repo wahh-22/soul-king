@@ -365,6 +365,120 @@ func TestDiscoverInstallDirWithoutPathEntry(t *testing.T) {
 	}
 }
 
+func TestDiscoverSnapHint(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	tr.file("/snap/chromium/current/marker", 0o644)
+	_, err := tr.discover(discoverCase{goarch: "amd64"})
+	nb := noBrowser(t, err)
+	for _, want := range []string{"Snap", "no Widevine", "cannot be driven", "google.com/chrome", ".deb/.rpm", "libwidevinecdm0"} {
+		if !strings.Contains(nb.Error(), want) {
+			t.Errorf("error %q should mention %q", nb.Error(), want)
+		}
+	}
+}
+
+func TestDiscoverSandboxedMarkers(t *testing.T) {
+	for _, marker := range []string{
+		"/snap/bin/chromium", "/snap/chromium/current",
+		"/var/lib/flatpak/app/org.chromium.Chromium",
+		"/var/lib/flatpak/app/com.google.Chrome",
+		"/var/lib/flatpak/app/com.github.Eloston.UngoogledChromium",
+		"/home/u/.local/share/flatpak/app/org.chromium.Chromium",
+		"/home/u/.local/share/flatpak/app/com.google.Chrome",
+		"/home/u/.local/share/flatpak/app/com.github.Eloston.UngoogledChromium",
+		"/var/lib/flatpak/exports/bin/com.google.Chrome",
+	} {
+		t.Run(marker, func(t *testing.T) {
+			tr := newTree(t)
+			if strings.Contains(marker, "/bin/") {
+				tr.exe(marker)
+			} else {
+				tr.file(marker+"/marker", 0o644)
+			}
+			_, err := tr.discover(discoverCase{goarch: "amd64"})
+			nb := noBrowser(t, err)
+			if len(nb.Sandboxed) != 1 {
+				t.Fatalf("Sandboxed = %+v", nb.Sandboxed)
+			}
+			wantName, wantKind := filepath.Base(marker), "flatpak"
+			if strings.HasPrefix(marker, "/snap/") {
+				wantName, wantKind = "chromium", "snap"
+			}
+			if nb.Sandboxed[0] != (SandboxedBrowser{Name: wantName, Kind: wantKind}) {
+				t.Fatalf("Sandboxed = %+v", nb.Sandboxed)
+			}
+			if !strings.Contains(nb.Error(), "cannot") || !strings.Contains(nb.Error(), ".deb/.rpm") {
+				t.Fatalf("unhelpful error: %v", nb)
+			}
+			if wantName == "com.google.Chrome" && strings.Contains(nb.Error(), "no Widevine") {
+				t.Fatalf("Flatpak Chrome includes Widevine: %v", nb)
+			}
+		})
+	}
+}
+
+func TestDiscoverSandboxedNeverChosen(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	tr.cdm("/home/u/.config/chromium/WidevineCdm/1.0", "linux_x64")
+	c := discoverCase{goarch: "amd64", path: map[string]string{"chromium": "/snap/bin/chromium"}}
+	_, err := tr.discover(c)
+	noBrowser(t, err)
+	c.vars = map[string]string{BrowserEnv: "/snap/bin/chromium"}
+	_, err = tr.discover(c)
+	noBrowser(t, err)
+	c.vars = nil
+	tr.exe("/opt/google/chrome/chrome")
+	tr.cdm("/opt/google/chrome/WidevineCdm", "linux_x64")
+	got, err := tr.discover(c)
+	if err != nil || got.Path != "/opt/google/chrome/chrome" {
+		t.Fatalf("real Chrome should win: %+v, %v", got, err)
+	}
+}
+
+func TestDiscoverFlatpakNeverChosen(t *testing.T) {
+	for _, base := range []string{"/var/lib/flatpak", "/home/u/.local/share/flatpak"} {
+		t.Run(base, func(t *testing.T) {
+			tr := newTree(t)
+			p := base + "/exports/bin/com.google.Chrome"
+			tr.exe(p)
+			tr.cdm(base+"/exports/bin/WidevineCdm", "linux_x64")
+			tr.link("/usr/bin/google-chrome", "../../"+strings.TrimPrefix(p, "/"))
+			_, err := tr.discover(discoverCase{goarch: "amd64", path: map[string]string{"google-chrome": "/usr/bin/google-chrome"}})
+			if nb := noBrowser(t, err); len(nb.Sandboxed) != 1 {
+				t.Fatalf("Sandboxed = %+v", nb.Sandboxed)
+			}
+		})
+	}
+}
+
+func TestDiscoverSandboxedDeduplicatesMarkers(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	tr.file("/snap/chromium/current/marker", 0o644)
+	tr.file("/var/lib/flatpak/app/com.google.Chrome/marker", 0o644)
+	tr.file("/home/u/.local/share/flatpak/app/com.google.Chrome/marker", 0o644)
+	_, err := tr.discover(discoverCase{goarch: "amd64"})
+	if nb := noBrowser(t, err); len(nb.Sandboxed) != 2 {
+		t.Fatalf("Sandboxed = %+v; want one per kind/name", nb.Sandboxed)
+	}
+}
+
+func TestDiscoverSandboxedARM64Hint(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	_, err := tr.discover(discoverCase{goarch: "arm64"})
+	for _, want := range []string{"no Linux ARM64 Chrome", "distribution Chromium with Widevine"} {
+		if !strings.Contains(noBrowser(t, err).Error(), want) {
+			t.Fatalf("error %v should mention %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), ".deb/.rpm") {
+		t.Fatalf("must not recommend Chrome on ARM64: %v", err)
+	}
+}
+
 func TestDiscoverNothingInstalled(t *testing.T) {
 	tr := newTree(t)
 	_, err := tr.discover(discoverCase{goarch: "amd64"})

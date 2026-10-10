@@ -47,6 +47,10 @@ Google Chrome ships with Widevine; Chromium needs it added. Google ships no
 Linux ARM64 Chrome, so use Chromium with Widevine added on ARM64. Local files
 work without a browser.
 
+Snap/Flatpak Chrome and Chromium are not supported yet. On Ubuntu, install
+Google Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/)
+instead of the Chromium Snap; on ARM64, use a distribution Chromium with Widevine.
+
 After installing, sign in once:
 
 ```sh

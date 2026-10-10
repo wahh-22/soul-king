@@ -58,6 +58,13 @@ type Installation struct {
 	Reason string
 }
 
+// SandboxedBrowser identifies an unsupported sandboxed installation.
+// Name is the Snap name or Flatpak application ID; Kind is "snap" or "flatpak".
+type SandboxedBrowser struct {
+	Name string
+	Kind string
+}
+
 // NoBrowserError reports that no Chrome or Chromium with Widevine for this
 // platform was found. It wraps ErrNoBrowser.
 type NoBrowserError struct {
@@ -66,9 +73,29 @@ type NoBrowserError struct {
 	// WithoutWidevine lists the browsers found that lack it, in preference
 	// order, so the message can say what to fix.
 	WithoutWidevine []string
+	// Sandboxed lists installs we cannot drive with our pipe and profile.
+	Sandboxed []SandboxedBrowser
 }
 
 func (e *NoBrowserError) Error() string {
+	if len(e.Sandboxed) != 0 {
+		var found []string
+		for _, b := range e.Sandboxed {
+			switch {
+			case b.Kind == "snap":
+				found = append(found, "found Chromium as a Snap, which has no Widevine and cannot be driven by nu11signal")
+			case b.Name == "com.google.Chrome":
+				found = append(found, "found Google Chrome as a Flatpak, which nu11signal cannot drive yet")
+			default:
+				found = append(found, "found "+b.Name+" as a Flatpak, which has no Widevine bundled and nu11signal cannot drive yet")
+			}
+		}
+		install := "install Google Chrome (.deb/.rpm from google.com/chrome) or a distribution Chromium with Widevine (e.g. chromium + libwidevinecdm0)"
+		if e.Arch == "linux_arm64" {
+			install = "Google ships no Linux ARM64 Chrome; use a distribution Chromium with Widevine"
+		}
+		return "webplayer: " + strings.Join(found, "; ") + "; " + install
+	}
 	if len(e.WithoutWidevine) == 0 {
 		return fmt.Sprintf("webplayer: no Google Chrome or Chromium found; install one with Widevine (%s) or set %s", e.Arch, BrowserEnv)
 	}
@@ -171,6 +198,7 @@ func discover(env discoverEnv) (Installation, error) {
 		inst, _, ok := d.check(p, flavorOf(p))
 		if !ok {
 			missing.WithoutWidevine = []string{p}
+			missing.Sandboxed = d.sandboxedBrowsers()
 			return Installation{}, missing
 		}
 		inst.Reason = "from " + BrowserEnv + ": " + inst.Reason
@@ -210,6 +238,7 @@ func discover(env discoverEnv) (Installation, error) {
 			}
 		}
 	}
+	missing.Sandboxed = d.sandboxedBrowsers()
 	return Installation{}, missing
 }
 
@@ -228,6 +257,11 @@ func (d discoverer) check(launcher string, fl *flavor) (Installation, []string, 
 	real, err := d.env.fs.EvalSymlinks(launcher)
 	if err != nil {
 		real = launcher
+	}
+	// Even a component CDM in the host config does not make a sandboxed
+	// launcher usable: passing our pipe and profile through it is unverified.
+	if d.sandboxedPath(launcher) || d.sandboxedPath(real) {
+		return Installation{}, []string{real}, false
 	}
 	binaries := []string{real}
 	if fl != nil {
@@ -295,6 +329,37 @@ func (d discoverer) componentCDM(dir string) string {
 		}
 	}
 	return ""
+}
+
+// sandboxedBrowsers inspects markers only; never run snap or flatpak.
+func (d discoverer) sandboxedBrowsers() []SandboxedBrowser {
+	var found []SandboxedBrowser
+	exists := func(p string) bool {
+		_, err := d.env.fs.Stat(p)
+		return err == nil
+	}
+	if exists("/snap/bin/chromium") || exists("/snap/chromium/current") {
+		found = append(found, SandboxedBrowser{Name: "chromium", Kind: "snap"})
+	}
+	for _, id := range []string{"org.chromium.Chromium", "com.google.Chrome", "com.github.Eloston.UngoogledChromium"} {
+		paths := []string{"/var/lib/flatpak/app/" + id, "/var/lib/flatpak/exports/bin/" + id}
+		if d.env.home != "" {
+			base := filepath.Join(d.env.home, ".local/share/flatpak")
+			paths = append(paths, filepath.Join(base, "app", id), filepath.Join(base, "exports/bin", id))
+		}
+		if slices.ContainsFunc(paths, exists) {
+			found = append(found, SandboxedBrowser{Name: id, Kind: "flatpak"})
+		}
+	}
+	return found
+}
+
+func (d discoverer) sandboxedPath(p string) bool {
+	roots := []string{"/snap/", "/var/lib/flatpak/"}
+	if d.env.home != "" {
+		roots = append(roots, filepath.Join(d.env.home, ".local/share/flatpak")+"/")
+	}
+	return slices.ContainsFunc(roots, func(root string) bool { return strings.HasPrefix(p, root) })
 }
 
 func (d discoverer) executable(p string) bool {

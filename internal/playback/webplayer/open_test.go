@@ -354,6 +354,28 @@ func TestProfileLocked(t *testing.T) {
 	}
 }
 
+func TestLoginPrintsNoBrowserHint(t *testing.T) {
+	tr := newTree(t)
+	tr.exe("/snap/bin/chromium")
+	_, missing := tr.discover(discoverCase{goarch: "amd64"})
+	l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+	l.discover = func() (Installation, error) { return Installation{}, missing }
+	var out strings.Builder
+	if err := l.login(context.Background(), &out); !errors.Is(err, ErrNoBrowser) {
+		t.Fatalf("login = %v; want ErrNoBrowser", err)
+	}
+	if out.String() != missing.Error()+"\n" {
+		t.Fatalf("output = %q; want %q", out.String(), missing.Error()+"\n")
+	}
+	out.Reset()
+	if _, err := l.open(context.Background(), OpenOptions{Stderr: &out}); !errors.Is(err, ErrNoBrowser) {
+		t.Fatalf("open = %v; want ErrNoBrowser", err)
+	}
+	if out.Len() != 0 || l.launched != 0 {
+		t.Fatal("normal startup must remain silent and neither path may launch")
+	}
+}
+
 func TestLoginWaitsForTheSignInThenCloses(t *testing.T) {
 	ev := &events{}
 	b := newFakeBrowser(ev)

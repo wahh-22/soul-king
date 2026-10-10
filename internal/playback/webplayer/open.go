@@ -142,6 +142,10 @@ func Login(ctx context.Context, out io.Writer) error {
 func (l launcher) login(ctx context.Context, out io.Writer) error {
 	b, page, err := l.start(ctx, false, nil)
 	if err != nil {
+		var missing *NoBrowserError
+		if errors.As(err, &missing) {
+			fmt.Fprintln(out, missing.Error())
+		}
 		return err
 	}
 	// Browser.close shuts the browser down cleanly, so it saves the

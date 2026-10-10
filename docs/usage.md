@@ -159,7 +159,10 @@ Chrome, Chromium with Widevine added is the way. The browser is looked up
 as `google-chrome`, `google-chrome-stable`, `chromium` and
 `chromium-browser` on `PATH`, then in the usual install directories;
 `NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. Snap and
-Flatpak browsers are not supported.
+Flatpak Chrome/Chromium are not supported yet: nu11signal cannot drive
+these sandboxed installs (Ubuntu's Chromium Snap also has no Widevine).
+On Ubuntu, install Google Chrome's `.deb` from [google.com/chrome](https://www.google.com/chrome/)
+instead; on ARM64, use a distribution Chromium with Widevine.
 
 For containers and unusual setups, `NU11SIGNAL_BROWSER_FLAGS` adds
 space-separated flags to the browser's command line, for both
