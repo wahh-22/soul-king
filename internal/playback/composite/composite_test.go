@@ -5,6 +5,8 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -220,6 +222,29 @@ func TestSupportsPerId(t *testing.T) {
 	}
 }
 
+// limited is a primary offering only some capabilities, as the Linux
+// bridge does.
+type limited struct {
+	*playbacktest.Fake
+	offers map[playback.Capability]bool
+}
+
+func (l limited) Supports(c playback.Capability, _ string) bool { return l.offers[c] }
+
+func TestSupportsAsksAPrimaryWithCapabilities(t *testing.T) {
+	apple := limited{playbacktest.New(), map[playback.Capability]bool{playback.CapCatalogSearch: true}}
+	p := New(apple, playbacktest.New())
+	defer p.Close()
+	if !p.Supports(playback.CapCatalogSearch, "s1") || !p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("search is offered by the primary")
+	}
+	for _, c := range []playback.Capability{playback.CapFavorites, playback.CapEditPlaylists} {
+		if p.Supports(c, "s1") || p.Supports(c, "") {
+			t.Errorf("%s: the primary does not offer it", c)
+		}
+	}
+}
+
 func TestLocalOnlyHasNoCatalog(t *testing.T) {
 	local := playbacktest.New()
 	local.PlaylistsResult = []playback.Playlist{{ID: locP, Name: "Music"}}
@@ -257,6 +282,26 @@ func TestLocalOnlyHasNoCatalog(t *testing.T) {
 	}
 }
 
+func TestLocalOnlyReportsWhyAppleMusicIsUnavailableOnce(t *testing.T) {
+	local := playbacktest.New()
+	p := LocalOnly(local, "web player did not load")
+	defer p.Close()
+	if err := recv(t, p.Errors()); err.Error() != "apple music unavailable (web player did not load) // local files only" {
+		t.Fatalf("notice = %q", err)
+	}
+	if s, err := p.Authorize(ctx); err != nil || s != playback.AuthAuthorized {
+		t.Fatalf("Authorize = %v, %v", s, err)
+	}
+	quiet(t, p.Errors())
+	if p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("a local-only player offers the catalog")
+	}
+	local.PushState(playback.State{Title: "local"})
+	if s := recv(t, p.States()); s.Title != "local" {
+		t.Errorf("state = %+v", s)
+	}
+}
+
 func TestAppleRefusalLeavesLocalUsable(t *testing.T) {
 	p, apple, _ := newPair(t)
 	apple.AuthStatus = playback.AuthDenied
@@ -271,6 +316,398 @@ func TestAppleRefusalLeavesLocalUsable(t *testing.T) {
 	}
 	if _, err := p.SearchCatalog(ctx, "x", 5); !errors.Is(err, playback.ErrUnsupported) {
 		t.Errorf("SearchCatalog = %v", err)
+	}
+}
+
+// late is a primary whose authorization can complete after the first
+// Authorize (see playback.LateAuthorizer), answering status.
+type late struct {
+	*playbacktest.Fake
+	mu     sync.Mutex
+	status playback.AuthStatus
+	err    error
+	// hold, when set, makes Authorize report on it and then wait for its
+	// context to end.
+	hold chan struct{}
+}
+
+func newLate(t *testing.T) (*Player, *late, *playbacktest.Fake) {
+	t.Helper()
+	apple := &late{Fake: playbacktest.New(), status: playback.AuthNotDetermined}
+	local := playbacktest.New()
+	p := New(apple, local)
+	t.Cleanup(func() { _ = p.Close() })
+	return p, apple, local
+}
+
+func (l *late) AuthorizesLate() bool { return true }
+
+func (l *late) Authorize(ctx context.Context) (playback.AuthStatus, error) {
+	if _, err := l.Fake.Authorize(ctx); err != nil {
+		return "", err
+	}
+	l.mu.Lock()
+	status, err, hold := l.status, l.err, l.hold
+	l.mu.Unlock()
+	if hold != nil {
+		hold <- struct{}{}
+		<-ctx.Done()
+		return "", ctx.Err()
+	}
+	if err != nil {
+		return "", err
+	}
+	return status, nil
+}
+
+func (l *late) set(s playback.AuthStatus) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.status = s
+}
+
+// hinted is a late authorizer that tells the user how to authorize it.
+type hinted struct{ *late }
+
+func (hinted) AuthorizationHint() string { return "run sign-in" }
+
+// The waiting notice carries the primary's hint, when it has one.
+func TestAWaitingPrimarysHintIsInTheNotice(t *testing.T) {
+	apple := hinted{&late{Fake: playbacktest.New(), status: playback.AuthNotDetermined}}
+	p := New(apple, playbacktest.New())
+	t.Cleanup(func() { _ = p.Close() })
+	mustAuthorize(t, p)
+	if err := recv(t, p.Errors()); err.Error() != "apple music waiting for authorization // run sign-in" {
+		t.Errorf("notice = %v", err)
+	}
+}
+
+func mustAuthorize(t *testing.T, p *Player) {
+	t.Helper()
+	if s, err := p.Authorize(ctx); err != nil || s != playback.AuthAuthorized {
+		t.Fatalf("Authorize = %v, %v; want authorized", s, err)
+	}
+}
+
+func TestALateAuthorizerWaitsThenJoins(t *testing.T) {
+	p, apple, local := newLate(t)
+	mustAuthorize(t, p)
+	if err := recv(t, p.Errors()); err.Error() != "apple music waiting for authorization" {
+		t.Errorf("notice = %v", err)
+	}
+	if p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("search offered before Apple Music is authorized")
+	}
+	if _, err := p.SearchCatalog(ctx, "x", 5); !errors.Is(err, playback.ErrUnsupported) {
+		t.Errorf("SearchCatalog = %v, want ErrUnsupported", err)
+	}
+	_ = p.Pause(ctx)
+	if len(called(local, "Pause")) != 1 || len(called(apple.Fake, "Pause")) != 0 {
+		t.Errorf("Pause while waiting went to apple %v, local %v", methods(apple.Fake), methods(local))
+	}
+
+	// Still waiting: asked again, but not reported again.
+	mustAuthorize(t, p)
+	quiet(t, p.Errors())
+	if n := len(called(apple.Fake, "Authorize")); n != 2 {
+		t.Errorf("Apple asked %d times, want 2", n)
+	}
+
+	apple.set(playback.AuthAuthorized)
+	mustAuthorize(t, p)
+	quiet(t, p.Errors())
+	if !p.Supports(playback.CapCatalogSearch, "") || !p.Supports(playback.CapFavorites, "s1") {
+		t.Error("the catalog is not offered once Apple Music is authorized")
+	}
+	if _, err := p.SearchCatalog(ctx, "x", 5); err != nil || len(called(apple.Fake, "SearchCatalog")) != 1 {
+		t.Errorf("SearchCatalog = %v; apple %v", err, methods(apple.Fake))
+	}
+	if _, err := p.PlaySongs(ctx, []string{"s1"}, 0); err != nil || len(called(apple.Fake, "PlaySongs")) != 1 {
+		t.Errorf("PlaySongs = %v; apple %v", err, methods(apple.Fake))
+	}
+}
+
+func TestALateAuthorizerThatRefusesIsLeftOut(t *testing.T) {
+	for _, first := range []playback.AuthStatus{playback.AuthDenied, playback.AuthNotDetermined} {
+		p, apple, _ := newLate(t)
+		apple.set(first)
+		mustAuthorize(t, p)
+		if first == playback.AuthNotDetermined {
+			recv(t, p.Errors()) // waiting
+			apple.set(playback.AuthDenied)
+			mustAuthorize(t, p)
+		}
+		if err := recv(t, p.Errors()); err.Error() != "apple music unavailable (access denied) // local files only" {
+			t.Errorf("%s: notice = %v", first, err)
+		}
+		asked := len(called(apple.Fake, "Authorize"))
+		apple.set(playback.AuthAuthorized)
+		mustAuthorize(t, p)
+		if n := len(called(apple.Fake, "Authorize")); n != asked {
+			t.Errorf("%s: a refused Apple Music was asked again", first)
+		}
+		if p.Supports(playback.CapCatalogSearch, "") {
+			t.Errorf("%s: search offered after a refusal", first)
+		}
+	}
+}
+
+func TestAPlainPrimaryNotDeterminedIsLeftOut(t *testing.T) {
+	p, apple, _ := newPair(t)
+	apple.AuthStatus = playback.AuthNotDetermined
+	mustAuthorize(t, p)
+	if err := recv(t, p.Errors()); err.Error() != "apple music unavailable (access notDetermined) // local files only" {
+		t.Errorf("notice = %v", err)
+	}
+	apple.AuthStatus = playback.AuthAuthorized
+	mustAuthorize(t, p)
+	if n := len(called(apple, "Authorize")); n != 1 {
+		t.Errorf("Apple asked %d times, want once", n)
+	}
+	if p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("search offered after notDetermined from a primary that cannot authorize late")
+	}
+}
+
+func TestALateAuthorizerIsSafeForConcurrentUse(t *testing.T) {
+	p, apple, _ := newLate(t)
+	go func() {
+		for range p.Errors() {
+		}
+	}()
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range 20 {
+				if i == 0 && j == 10 {
+					apple.set(playback.AuthAuthorized)
+				}
+				_, _ = p.Authorize(ctx)
+				_ = p.Supports(playback.CapCatalogSearch, "")
+				_, _ = p.SearchCatalog(ctx, "x", 5)
+				_, _ = p.Playlists(ctx)
+			}
+		}()
+	}
+	wg.Wait()
+	mustAuthorize(t, p)
+	if !p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("the catalog is not offered once Apple Music is authorized")
+	}
+}
+
+// manualTicks makes p's re-check of a pending primary tick only when the
+// test sends on the returned channel, and counts the re-checks started.
+func manualTicks(p *Player) (chan time.Time, *atomic.Int32) {
+	ticks := make(chan time.Time)
+	started := new(atomic.Int32)
+	p.ticker = func() (<-chan time.Time, func()) {
+		started.Add(1)
+		return ticks, func() {}
+	}
+	return ticks, started
+}
+
+// mustTick waits for the re-check to take one tick: it asked once more for
+// every earlier tick.
+func mustTick(t *testing.T, ticks chan<- time.Time) {
+	t.Helper()
+	select {
+	case ticks <- time.Time{}:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the re-check did not take a tick")
+	}
+}
+
+// noTick checks no re-check is waiting for a tick.
+func noTick(t *testing.T, ticks chan<- time.Time) {
+	t.Helper()
+	select {
+	case ticks <- time.Time{}:
+		t.Fatal("a re-check is still running")
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestAPendingPrimaryIsAskedAgainUntilAuthorized(t *testing.T) {
+	p, apple, _ := newLate(t)
+	ticks, started := manualTicks(p)
+	mustAuthorize(t, p)
+	if err := recv(t, p.Errors()); err.Error() != "apple music waiting for authorization" {
+		t.Fatalf("notice = %v", err)
+	}
+	for range 3 {
+		mustTick(t, ticks)
+	}
+	quiet(t, p.Errors())
+	if p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("search offered while still waiting")
+	}
+
+	apple.set(playback.AuthAuthorized)
+	mustTick(t, ticks)
+	if err := recv(t, p.Errors()); err.Error() != "apple music ready" {
+		t.Fatalf("notice = %v, want apple music ready", err)
+	}
+	if !p.Supports(playback.CapCatalogSearch, "") {
+		t.Error("the catalog is not offered once Apple Music is authorized")
+	}
+	if n := len(called(apple.Fake, "Authorize")); n != 5 {
+		t.Errorf("Apple asked %d times, want 1 + 4 ticks", n)
+	}
+	noTick(t, ticks)
+	if n := started.Load(); n != 1 {
+		t.Errorf("%d re-checks started, want 1", n)
+	}
+	if _, err := p.PlaySongs(ctx, []string{"s1"}, 0); err != nil || len(called(apple.Fake, "PlaySongs")) != 1 {
+		t.Errorf("PlaySongs = %v; apple %v", err, methods(apple.Fake))
+	}
+}
+
+func TestAPendingPrimaryThatRefusesOrFailsIsLeftOut(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		status playback.AuthStatus
+		err    error
+		want   string
+	}{
+		{"denied", playback.AuthDenied, nil, "apple music unavailable (access denied) // local files only"},
+		{"failed", "", errors.New("bridge denied the request"), "apple music unavailable (bridge denied the request) // local files only"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			p, apple, _ := newLate(t)
+			ticks, _ := manualTicks(p)
+			mustAuthorize(t, p)
+			recv(t, p.Errors()) // waiting
+			apple.mu.Lock()
+			apple.status, apple.err = tt.status, tt.err
+			apple.mu.Unlock()
+			mustTick(t, ticks)
+			if err := recv(t, p.Errors()); err.Error() != tt.want {
+				t.Fatalf("notice = %v, want %s", err, tt.want)
+			}
+			noTick(t, ticks)
+			asked := len(called(apple.Fake, "Authorize"))
+			apple.set(playback.AuthAuthorized)
+			mustAuthorize(t, p)
+			if n := len(called(apple.Fake, "Authorize")); n != asked {
+				t.Error("a refused Apple Music was asked again")
+			}
+			if p.Supports(playback.CapCatalogSearch, "") {
+				t.Error("search offered after a refusal")
+			}
+		})
+	}
+}
+
+// An Authorize call that settles the wait ends the re-check quietly; a
+// primary pending again is re-checked by the same one.
+func TestAuthorizeAndTheRecheckShareOneWait(t *testing.T) {
+	p, apple, _ := newLate(t)
+	ticks, started := manualTicks(p)
+	mustAuthorize(t, p)
+	recv(t, p.Errors()) // waiting
+	mustAuthorize(t, p)
+	mustAuthorize(t, p)
+	apple.set(playback.AuthAuthorized)
+	mustAuthorize(t, p)
+	if !p.Supports(playback.CapCatalogSearch, "") {
+		t.Fatal("the catalog is not offered once Apple Music is authorized")
+	}
+	apple.set(playback.AuthNotDetermined)
+	mustAuthorize(t, p) // pending again, before the re-check ticked
+	recv(t, p.Errors()) // waiting
+	apple.set(playback.AuthAuthorized)
+	mustTick(t, ticks)
+	if err := recv(t, p.Errors()); err.Error() != "apple music ready" {
+		t.Fatalf("notice = %v, want apple music ready", err)
+	}
+	noTick(t, ticks)
+	if n := started.Load(); n != 1 {
+		t.Errorf("%d re-checks started, want 1", n)
+	}
+
+	// Settled by Authorize between ticks: the next tick ends it quietly.
+	p, apple, _ = newLate(t)
+	ticks, _ = manualTicks(p)
+	mustAuthorize(t, p)
+	recv(t, p.Errors()) // waiting
+	apple.set(playback.AuthAuthorized)
+	mustAuthorize(t, p)
+	asked := len(called(apple.Fake, "Authorize"))
+	mustTick(t, ticks)
+	noTick(t, ticks)
+	quiet(t, p.Errors())
+	if n := len(called(apple.Fake, "Authorize")); n != asked {
+		t.Errorf("an authorized Apple Music was asked again")
+	}
+}
+
+func TestNoRecheckWithoutAPendingPrimary(t *testing.T) {
+	plain, apple, _ := newPair(t)
+	_, plainStarted := manualTicks(plain)
+	apple.AuthStatus = playback.AuthNotDetermined
+	mustAuthorize(t, plain)
+
+	authorized, lateApple, _ := newLate(t)
+	_, authorizedStarted := manualTicks(authorized)
+	lateApple.set(playback.AuthAuthorized)
+	mustAuthorize(t, authorized)
+	mustAuthorize(t, authorized)
+
+	denied, deniedApple, _ := newLate(t)
+	_, deniedStarted := manualTicks(denied)
+	deniedApple.set(playback.AuthDenied)
+	mustAuthorize(t, denied)
+
+	localOnly := New(nil, playbacktest.New())
+	t.Cleanup(func() { _ = localOnly.Close() })
+	_, localStarted := manualTicks(localOnly)
+	mustAuthorize(t, localOnly)
+
+	for name, n := range map[string]int32{
+		"plain primary":      plainStarted.Load(),
+		"authorized primary": authorizedStarted.Load(),
+		"denied primary":     deniedStarted.Load(),
+		"no primary":         localStarted.Load(),
+	} {
+		if n != 0 {
+			t.Errorf("%s: %d re-checks started, want none", name, n)
+		}
+	}
+}
+
+// Close ends the re-check, waiting for a tick or asking, and nothing is
+// reported after it.
+func TestCloseEndsTheRecheck(t *testing.T) {
+	for _, asking := range []bool{false, true} {
+		p, apple, _ := newLate(t)
+		ticks, started := manualTicks(p)
+		mustAuthorize(t, p)
+		recv(t, p.Errors()) // waiting
+		if asking {
+			hold := make(chan struct{})
+			apple.mu.Lock()
+			apple.hold = hold
+			apple.mu.Unlock()
+			mustTick(t, ticks)
+			recv(t, hold)
+		}
+		closed := make(chan error, 1)
+		go func() { closed <- p.Close() }()
+		select {
+		case <-closed:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("asking %v: Close did not end the re-check", asking)
+		}
+		for err := range p.Errors() {
+			t.Errorf("asking %v: reported %v after Close", asking, err)
+		}
+		if n := started.Load(); n != 1 {
+			t.Errorf("asking %v: %d re-checks started, want 1", asking, n)
+		}
 	}
 }
 
