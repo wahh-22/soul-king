@@ -1,0 +1,61 @@
+{
+  "next": "/v1/me/library/playlists/p.A1b2C3d4E5f6G7/tracks?offset=4",
+  "data": [
+    {
+      "id": "i.AAAA1111bbbb",
+      "type": "library-songs",
+      "href": "/v1/me/library/songs/i.AAAA1111bbbb",
+      "attributes": {
+        "name": "Opening Theme",
+        "artistName": "Example Artist",
+        "albumName": "Example Album",
+        "durationInMillis": 215000,
+        "trackNumber": 1,
+        "discNumber": 1,
+        "genreNames": ["Pop"],
+        "hasLyrics": true,
+        "releaseDate": "2019-04-05",
+        "playParams": {"id": "i.AAAA1111bbbb", "kind": "song", "isLibrary": true, "reporting": true, "catalogId": "1000000001", "reportingId": "1000000001"}
+      }
+    },
+    {
+      "id": "i.BBBB2222cccc",
+      "type": "library-songs",
+      "href": "/v1/me/library/songs/i.BBBB2222cccc",
+      "attributes": {
+        "name": "Home Recording",
+        "artistName": "Uploader",
+        "albumName": "Demos",
+        "durationInMillis": 180500,
+        "trackNumber": 3,
+        "genreNames": [],
+        "hasLyrics": false,
+        "playParams": {"id": "i.BBBB2222cccc", "kind": "song", "isLibrary": true, "reporting": false}
+      }
+    },
+    {
+      "id": "1000000003",
+      "type": "songs",
+      "href": "/v1/catalog/us/songs/1000000003",
+      "attributes": {
+        "name": "Catalog Song",
+        "artistName": "Another Artist",
+        "albumName": "Another Album",
+        "durationInMillis": 241000,
+        "playParams": {"id": "1000000003", "kind": "song"}
+      }
+    },
+    {
+      "id": "i.CCCC3333dddd",
+      "type": "library-music-videos",
+      "href": "/v1/me/library/music-videos/i.CCCC3333dddd",
+      "attributes": {
+        "name": "A Music Video",
+        "artistName": "Example Artist",
+        "durationInMillis": 200000,
+        "playParams": {"id": "i.CCCC3333dddd", "kind": "musicVideo", "isLibrary": true, "catalogId": "1000000099"}
+      }
+    }
+  ],
+  "meta": {"total": 6}
+}

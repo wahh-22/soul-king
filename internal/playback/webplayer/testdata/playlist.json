@@ -1,0 +1,222 @@
+{
+ "data": [
+  {
+   "id": "pl.fdc21e2843764a8a99076ad5b6c40f4d",
+   "type": "playlists",
+   "href": "/v1/catalog/us/playlists/pl.fdc21e2843764a8a99076ad5b6c40f4d",
+   "attributes": {
+    "artwork": {
+     "bgColor": "131313",
+     "height": 1080,
+     "textColor1": "eba140",
+     "textColor2": "e29438",
+     "textColor3": "c08437",
+     "textColor4": "b87a31",
+     "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/8a/49/84/8a498443-718e-40c0-404e-d1380c2352b7/ami-identity-531db02daa273271c643ba631a46b9d5-2026-09-07T07-12-12.872Z_cropped.png/{w}x{h}SC.FPESS04.jpg?l=en-US",
+     "width": 1080
+    },
+    "curatorName": "Apple Music Alternative",
+    "description": {
+     "short": "Their continued experimentation has only bolstered their legend.",
+     "standard": "As hard as it is to believe now, Radiohead’s “Creep” didn’t hit until nearly a year after its 1992 release, eventually recasting the Oxford ensemble as inheritors to the kind of alternative anthem championed by U2. The worldwide success of this disarmingly intimate ode to alienation would have proven a fluke if the band hadn’t repeated the trick with 1995’s “Fake Plastic Trees,” a strummed then string-swept daydream through eerily glossy surfaces both human and otherwise. Even then, few could have predicted the dystopian scope and artistic ambition of 1997’s <i>OK Computer</i>, which later made it onto Apple Music’s 100 Best Albums list. Heralded by the gorgeous yet outright ominous “Paranoid Android” and still another generational lost-soul ballad in “Karma Police,” that record announced Radiohead as The Beatles of their era, in terms of balancing both commercial and critical success with emboldened experimentation.\n\nFree to transform at will from song to song, the band began a new era with 2000’s <i>Kid A</i>, releasing no singles and embracing abstract electronics on opener “Everything in Its Right Place” and “Idioteque.” If their next few albums seemed to shrug off commercial concerns entirely, they still yielded such indelible turns as 2001’s stumbling piano amble “Pyramid Song,” 2003’s quiet-turned-loud “There, There,” 2009’s anti-gravity phantom “All I Need,” 2011’s squelching “Lotus Flower,” and 2016’s urgent “Burn the Witch.” All explored anew while deepening the alchemy between unmoored singer/lyricist Thom Yorke, shape-shifting guitarist Jonny Greenwood, and the other players. No wonder Radiohead still remain the high-water mark for bands who can do exactly what they want and still enjoy a decades-spanning audience."
+    },
+    "isChart": false,
+    "lastModifiedDate": "2025-11-05T18:39:55Z",
+    "name": "Radiohead Essentials",
+    "playParams": {
+     "id": "pl.fdc21e2843764a8a99076ad5b6c40f4d",
+     "kind": "playlist",
+     "versionHash": "7359c54f1b2ba1d0ce824b77d4b33b6aee6bfa37dd3701d0a73337e08d02f018"
+    },
+    "playlistType": "editorial",
+    "url": "https://music.apple.com/us/playlist/radiohead-essentials/pl.fdc21e2843764a8a99076ad5b6c40f4d"
+   },
+   "relationships": {
+    "curator": {
+     "href": "/v1/catalog/us/playlists/pl.fdc21e2843764a8a99076ad5b6c40f4d/curator",
+     "data": [
+      {
+       "id": "976439526",
+       "type": "apple-curators",
+       "href": "/v1/catalog/us/apple-curators/976439526"
+      }
+     ]
+    },
+    "tracks": {
+     "href": "/v1/catalog/us/playlists/pl.fdc21e2843764a8a99076ad5b6c40f4d/tracks",
+     "data": [
+      {
+       "id": "1097861834",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097861834",
+       "attributes": {
+        "albumName": "OK Computer",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "fefeff",
+         "height": 4000,
+         "textColor1": "031623",
+         "textColor2": "332b2c",
+         "textColor3": "35454f",
+         "textColor4": "5b5556",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+        "discNumber": 1,
+        "durationInMillis": 299560,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9701374",
+        "name": "Let Down",
+        "playParams": {
+         "id": "1097861834",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/cd/65/58/cd6558df-2ba2-6f8e-25a0-d2db94494f74/mzaf_5583409847288875892.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1997-05-21",
+        "trackNumber": 5,
+        "url": "https://music.apple.com/us/album/let-down/1097861387?i=1097861834"
+       }
+      },
+      {
+       "id": "1097862231",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097862231",
+       "attributes": {
+        "albumName": "Pablo Honey",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "ded9d2",
+         "height": 4000,
+         "textColor1": "0e0a03",
+         "textColor2": "3e2217",
+         "textColor3": "38332c",
+         "textColor4": "5e473c",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/78/a4/ec/78a4ec7b-c6d6-c9c8-441b-660486e56a89/634904077969.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Albert Hammond, Colin Greenwood, Ed O'Brien, Jonny Greenwood, Mike Hazlewood, Phil Selway & Thom Yorke",
+        "contentRating": "explicit",
+        "discNumber": 1,
+        "durationInMillis": 238640,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9200070",
+        "name": "Creep",
+        "playParams": {
+         "id": "1097862231",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/91/07/a1/9107a13f-9179-34a9-89d6-a9569777195c/mzaf_9360083878255871917.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1992-09-21",
+        "trackNumber": 2,
+        "url": "https://music.apple.com/us/album/creep/1097862062?i=1097862231"
+       }
+      },
+      {
+       "id": "1097861836",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097861836",
+       "attributes": {
+        "albumName": "OK Computer",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "fefeff",
+         "height": 4000,
+         "textColor1": "031623",
+         "textColor2": "332b2c",
+         "textColor3": "35454f",
+         "textColor4": "5b5556",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+        "discNumber": 1,
+        "durationInMillis": 264067,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9701368",
+        "name": "Karma Police",
+        "playParams": {
+         "id": "1097861836",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/46/21/35/46213520-da4a-1806-0c59-5ca6ad008b4e/mzaf_5277404092043261430.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1997-05-21",
+        "trackNumber": 6,
+        "url": "https://music.apple.com/us/album/karma-police/1097861387?i=1097861836"
+       }
+      },
+      {
+       "id": "1097862845",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097862845",
+       "attributes": {
+        "albumName": "The Bends",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "030101",
+         "height": 4000,
+         "textColor1": "fccbbf",
+         "textColor2": "fec29a",
+         "textColor3": "caa399",
+         "textColor4": "cc9b7b",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/1b/a9/5c/1ba95cac-b245-d386-63fb-6b857aa9dce8/634904078065.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+        "discNumber": 1,
+        "durationInMillis": 290707,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9400056",
+        "name": "Fake Plastic Trees",
+        "playParams": {
+         "id": "1097862845",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/a8/c2/e6/a8c2e649-2a9d-8c7c-060b-7aced7644752/mzaf_7424058486766692978.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1995-03-08",
+        "trackNumber": 4,
+        "url": "https://music.apple.com/us/album/fake-plastic-trees/1097862703?i=1097862845"
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

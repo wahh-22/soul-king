@@ -1,0 +1,449 @@
+package webplayer
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// events is an ordered log shared by a fake browser and its page.
+type events struct {
+	mu  sync.Mutex
+	log []string
+}
+
+func (e *events) add(s string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.log = append(e.log, s)
+}
+
+func (e *events) all() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return slices.Clone(e.log)
+}
+
+// fakeBrowser stands in for a launched browser: Close records itself and
+// ends Done, as a browser that exited.
+type fakeBrowser struct {
+	events *events
+	done   chan struct{}
+	once   sync.Once
+	closes int
+	mu     sync.Mutex
+}
+
+func newFakeBrowser(ev *events) *fakeBrowser {
+	return &fakeBrowser{events: ev, done: make(chan struct{})}
+}
+
+func (b *fakeBrowser) Client() *Client { return nil }
+
+func (b *fakeBrowser) Done() <-chan struct{} { return b.done }
+
+func (b *fakeBrowser) Close(context.Context) error {
+	b.mu.Lock()
+	b.closes++
+	b.mu.Unlock()
+	b.events.add("close browser")
+	b.exit()
+	return nil
+}
+
+// exit ends the browser on its own.
+func (b *fakeBrowser) exit() { b.once.Do(func() { close(b.done) }) }
+
+func (b *fakeBrowser) closed() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.closes
+}
+
+// statusPage answers status() from a script of {ready, authorized} pairs
+// (the last one repeats) and logs every other call in ev.
+func statusPage(ev *events, script ...[2]bool) *fakePage {
+	page := newPage()
+	var mu sync.Mutex
+	i := 0
+	page.setHandle(func(c call) (any, error) {
+		if c.fn != "status" {
+			ev.add(c.String())
+			return nil, nil
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		s := script[min(i, len(script)-1)]
+		i++
+		return map[string]bool{"ready": s[0], "authorized": s[1]}, nil
+	})
+	return page
+}
+
+// fakeLauncher launches b with page, records the options, and finds
+// the profile free unless inUse says otherwise.
+type fakeLauncher struct {
+	launcher
+	opts     []Options
+	launched int
+}
+
+func newLauncher(t *testing.T, b *fakeBrowser, page Evaluator) *fakeLauncher {
+	t.Helper()
+	profile := t.TempDir()
+	f := &fakeLauncher{}
+	f.launcher = launcher{
+		discover: func() (Installation, error) {
+			return Installation{Path: "/usr/bin/google-chrome", Binary: "/opt/google/chrome/chrome"}, nil
+		},
+		profileDir: func() (string, error) { return profile, nil },
+		inUse:      func(string) bool { return false },
+		getenv:     func(string) string { return "" },
+		launch: func(_ context.Context, opts Options) (browser, error) {
+			f.opts = append(f.opts, opts)
+			f.launched++
+			return b, nil
+		},
+		attach:       func(context.Context, *Client) (Evaluator, error) { return page, nil },
+		readyTimeout: 2 * time.Second,
+		readyEvery:   time.Millisecond,
+		loginEvery:   time.Millisecond,
+		loginTimeout: 2 * time.Second,
+	}
+	return f
+}
+
+func TestOpenLaunchesHeadlessWaitsUntilReadyAndHides(t *testing.T) {
+	ev := &events{}
+	b := newFakeBrowser(ev)
+	page := statusPage(ev, [2]bool{false, false}, [2]bool{false, false}, [2]bool{true, true})
+	l := newLauncher(t, b, page)
+	p, err := l.open(context.Background(), OpenOptions{})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if len(l.opts) != 1 {
+		t.Fatalf("launched %d times; want 1", len(l.opts))
+	}
+	o := l.opts[0]
+	if !o.Headless || o.URL != URL || o.Browser != "/usr/bin/google-chrome" || !filepath.IsAbs(o.Profile) {
+		t.Errorf("launch options = %+v; want headless at %s with the discovered browser and the profile", o, URL)
+	}
+	if got := ev.all(); !slices.Equal(got, []string{"hide()"}) {
+		t.Errorf("page calls before use = %v; want hide() once ready", got)
+	}
+	if _, err := p.PlaySongs(context.Background(), []string{"111"}, 0); err != nil {
+		t.Fatalf("PlaySongs: %v", err)
+	}
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if got, want := ev.all(), []string{"hide()", `play(["111"],0)`, "stop()", "close browser"}; !slices.Equal(got, want) {
+		t.Errorf("events = %v; want %v (the browser closed after the stop)", got, want)
+	}
+	_ = p.Close()
+	if b.closed() != 1 {
+		t.Errorf("browser closed %d times; want 1", b.closed())
+	}
+}
+
+func TestOpenWithoutABrowserLaunchesNothing(t *testing.T) {
+	l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+	l.discover = func() (Installation, error) { return Installation{}, &NoBrowserError{Arch: "linux_x64"} }
+	if _, err := l.open(context.Background(), OpenOptions{}); !errors.Is(err, ErrNoBrowser) {
+		t.Fatalf("open = %v; want ErrNoBrowser", err)
+	}
+	if l.launched != 0 {
+		t.Fatal("launched a browser without one")
+	}
+}
+
+func TestOpenRefusesAProfileInUse(t *testing.T) {
+	t.Run("locked before the launch", func(t *testing.T) {
+		l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+		l.inUse = func(string) bool { return true }
+		if _, err := l.open(context.Background(), OpenOptions{}); !errors.Is(err, ErrProfileInUse) {
+			t.Fatalf("open = %v; want ErrProfileInUse", err)
+		}
+		if l.launched != 0 {
+			t.Fatal("launched a browser on a profile in use")
+		}
+	})
+	t.Run("the browser exits on a lock taken meanwhile", func(t *testing.T) {
+		l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+		checks := 0
+		l.inUse = func(string) bool { checks++; return checks > 1 }
+		l.launch = func(context.Context, Options) (browser, error) {
+			return nil, errors.New("webplayer: chrome did not answer on the DevTools pipe")
+		}
+		_, err := l.open(context.Background(), OpenOptions{})
+		if !errors.Is(err, ErrProfileInUse) {
+			t.Fatalf("open = %v; want ErrProfileInUse", err)
+		}
+		if !strings.Contains(err.Error(), "close the other nu11signal or login window") {
+			t.Errorf("error %q does not say what to do", err)
+		}
+	})
+	t.Run("an attach failure on a lock held elsewhere", func(t *testing.T) {
+		b := newFakeBrowser(&events{})
+		l := newLauncher(t, b, newPage())
+		closedFirst := false
+		l.inUse = func(string) bool {
+			select {
+			case <-b.Done():
+				closedFirst = true
+				return true
+			default:
+				return false
+			}
+		}
+		l.attach = func(context.Context, *Client) (Evaluator, error) { return nil, ErrBrowserGone }
+		if _, err := l.open(context.Background(), OpenOptions{}); !errors.Is(err, ErrProfileInUse) {
+			t.Fatalf("open = %v; want ErrProfileInUse", err)
+		}
+		if !closedFirst || b.closed() != 1 {
+			t.Errorf("the browser was not closed before the lock was checked (closes %d)", b.closed())
+		}
+	})
+}
+
+func TestOpenGivesUpOnAPageThatNeverLoads(t *testing.T) {
+	b := newFakeBrowser(&events{})
+	l := newLauncher(t, b, statusPage(&events{}, [2]bool{false, false}))
+	l.readyTimeout = 20 * time.Millisecond
+	_, err := l.open(context.Background(), OpenOptions{})
+	if !errors.Is(err, ErrNotLoaded) || !strings.Contains(err.Error(), "music.apple.com did not load within") {
+		t.Fatalf("open = %v; want ErrNotLoaded", err)
+	}
+	if b.closed() != 1 {
+		t.Fatalf("browser closed %d times; want 1", b.closed())
+	}
+}
+
+func TestOpenWrapsABrowserThatDoesNotStart(t *testing.T) {
+	t.Run("launch", func(t *testing.T) {
+		l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+		l.launch = func(context.Context, Options) (browser, error) {
+			return nil, errors.New("webplayer: start /usr/bin/google-chrome: exec format error")
+		}
+		_, err := l.open(context.Background(), OpenOptions{})
+		if !errors.Is(err, ErrLaunchFailed) || errors.Is(err, ErrProfileInUse) || !strings.Contains(err.Error(), "exec format error") {
+			t.Fatalf("open = %v; want ErrLaunchFailed with the reason", err)
+		}
+	})
+	t.Run("attach", func(t *testing.T) {
+		b := newFakeBrowser(&events{})
+		l := newLauncher(t, b, newPage())
+		l.attach = func(context.Context, *Client) (Evaluator, error) { return nil, ErrBrowserGone }
+		if _, err := l.open(context.Background(), OpenOptions{}); !errors.Is(err, ErrLaunchFailed) || !errors.Is(err, ErrBrowserGone) {
+			t.Fatalf("open = %v; want ErrLaunchFailed wrapping ErrBrowserGone", err)
+		}
+		if b.closed() != 1 {
+			t.Errorf("browser closed %d times; want 1", b.closed())
+		}
+	})
+}
+
+// flagsEnv answers BrowserFlagsEnv with v.
+func flagsEnv(v string) func(string) string {
+	return func(name string) string {
+		if name == BrowserFlagsEnv {
+			return v
+		}
+		return ""
+	}
+}
+
+func TestOpenAndLoginLaunchWithTheBrowserFlags(t *testing.T) {
+	want := []string{"--no-sandbox", "--ozone-platform=wayland"}
+	l := newLauncher(t, newFakeBrowser(&events{}), statusPage(&events{}, [2]bool{true, true}))
+	l.getenv = flagsEnv("--no-sandbox --ozone-platform=wayland")
+	p, err := l.open(context.Background(), OpenOptions{})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	_ = p.Close()
+	if len(l.opts) != 1 || !slices.Equal(l.opts[0].ExtraFlags, want) {
+		t.Fatalf("open launch options = %+v; want ExtraFlags %q", l.opts, want)
+	}
+
+	l = newLauncher(t, newFakeBrowser(&events{}), statusPage(&events{}, [2]bool{true, true}))
+	l.getenv = flagsEnv("--no-sandbox --ozone-platform=wayland")
+	if err := l.login(context.Background(), &strings.Builder{}); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if len(l.opts) != 1 || !slices.Equal(l.opts[0].ExtraFlags, want) {
+		t.Fatalf("login launch options = %+v; want ExtraFlags %q", l.opts, want)
+	}
+}
+
+func TestOpenAndLoginRefuseInvalidBrowserFlags(t *testing.T) {
+	l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+	l.getenv = flagsEnv("--no-sandbox --remote-debugging-port=9222")
+	_, err := l.open(context.Background(), OpenOptions{})
+	if err == nil || errors.Is(err, ErrLaunchFailed) || !strings.Contains(err.Error(), BrowserFlagsEnv) ||
+		!strings.Contains(err.Error(), "--remote-debugging-port=9222") {
+		t.Fatalf("open = %v; want an error naming %s and the flag", err, BrowserFlagsEnv)
+	}
+	l.getenv = flagsEnv("no-sandbox")
+	if err := l.login(context.Background(), &strings.Builder{}); err == nil || !strings.Contains(err.Error(), BrowserFlagsEnv) {
+		t.Fatalf("login = %v; want an error naming %s", err, BrowserFlagsEnv)
+	}
+	if l.launched != 0 {
+		t.Fatal("launched a browser with invalid flags")
+	}
+}
+
+func TestOpenReportsTheBrowserExitOnce(t *testing.T) {
+	b := newFakeBrowser(&events{})
+	l := newLauncher(t, b, statusPage(&events{}, [2]bool{true, true}))
+	p, err := l.open(context.Background(), OpenOptions{})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	b.exit()
+	select {
+	case err := <-p.Errors():
+		if !errors.Is(err, ErrBrowserGone) {
+			t.Fatalf("Errors = %v; want ErrBrowserGone", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the browser's exit was not reported")
+	}
+	_ = p.Close()
+	for err := range p.Errors() {
+		t.Errorf("reported again: %v", err)
+	}
+}
+
+func TestProfileLocked(t *testing.T) {
+	host, err := os.Hostname()
+	if err != nil {
+		t.Skip("no hostname:", err)
+	}
+	tests := []struct {
+		name   string
+		target string // "" leaves no lock
+		want   bool
+	}{
+		{"no lock", "", false},
+		{"held by a live process", fmt.Sprintf("%s-%d", host, os.Getpid()), true},
+		{"left by a dead process", fmt.Sprintf("%s-%d", host, 1<<30), false},
+		{"held on another computer", "elsewhere-1234", true},
+		{"malformed", "nonsense", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tt.target != "" {
+				if err := os.Symlink(tt.target, filepath.Join(dir, "SingletonLock")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got := profileLocked(dir); got != tt.want {
+				t.Fatalf("profileLocked(%s) = %v; want %v", tt.target, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoginWaitsForTheSignInThenCloses(t *testing.T) {
+	ev := &events{}
+	b := newFakeBrowser(ev)
+	page := statusPage(ev, [2]bool{false, false}, [2]bool{true, false}, [2]bool{true, false}, [2]bool{true, true})
+	l := newLauncher(t, b, page)
+	var out strings.Builder
+	if err := l.login(context.Background(), &out); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if len(l.opts) != 1 || l.opts[0].Headless || l.opts[0].URL != URL {
+		t.Fatalf("launch options = %+v; want one visible window at %s", l.opts, URL)
+	}
+	want := "Sign in to Apple Music in the window that opened; it closes by itself when you are signed in.\n" +
+		"Signed in. Run nu11signal to play.\n"
+	if out.String() != want {
+		t.Errorf("output = %q; want %q", out.String(), want)
+	}
+	if b.closed() != 1 {
+		t.Errorf("browser closed %d times; want 1", b.closed())
+	}
+	if got := ev.all(); slices.Contains(got, "hide()") {
+		t.Errorf("the sign-in page was hidden: %v", got)
+	}
+}
+
+func TestLoginWhenAlreadySignedIn(t *testing.T) {
+	b := newFakeBrowser(&events{})
+	l := newLauncher(t, b, statusPage(&events{}, [2]bool{true, true}))
+	var out strings.Builder
+	if err := l.login(context.Background(), &out); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if got, want := out.String(), "Already signed in to Apple Music. Run nu11signal to play.\n"; got != want {
+		t.Errorf("output = %q; want %q", got, want)
+	}
+	if b.closed() != 1 {
+		t.Errorf("browser closed %d times; want 1", b.closed())
+	}
+}
+
+func TestLoginCancelledClosesTheWindow(t *testing.T) {
+	b := newFakeBrowser(&events{})
+	l := newLauncher(t, b, statusPage(&events{}, [2]bool{true, false}))
+	ctx, cancel := context.WithCancel(context.Background())
+	var out strings.Builder
+	errc := make(chan error, 1)
+	go func() { errc <- l.login(ctx, &out) }()
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	select {
+	case err := <-errc:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("login = %v; want cancelled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("login did not end with its context")
+	}
+	if b.closed() != 1 {
+		t.Errorf("browser closed %d times; want 1", b.closed())
+	}
+	if strings.Contains(out.String(), "Signed in") {
+		t.Errorf("output = %q; a cancelled sign-in reported success", out.String())
+	}
+}
+
+func TestLoginGivesUpAfterItsTimeout(t *testing.T) {
+	b := newFakeBrowser(&events{})
+	l := newLauncher(t, b, statusPage(&events{}, [2]bool{true, false}))
+	l.loginTimeout = 20 * time.Millisecond
+	err := l.login(context.Background(), &strings.Builder{})
+	if err == nil || !strings.Contains(err.Error(), "not signed in") {
+		t.Fatalf("login = %v; want a timeout", err)
+	}
+	if b.closed() != 1 {
+		t.Errorf("browser closed %d times; want 1", b.closed())
+	}
+}
+
+func TestLoginRefusesAProfileInUse(t *testing.T) {
+	l := newLauncher(t, newFakeBrowser(&events{}), newPage())
+	l.inUse = func(string) bool { return true }
+	if err := l.login(context.Background(), &strings.Builder{}); !errors.Is(err, ErrProfileInUse) {
+		t.Fatalf("login = %v; want ErrProfileInUse", err)
+	}
+}
+
+func TestPlayerTellsHowToSignIn(t *testing.T) {
+	p := New(newPage())
+	defer p.Close()
+	if got, want := p.AuthorizationHint(), "quit and run nu11signal --apple-music-login"; got != want {
+		t.Fatalf("AuthorizationHint = %q; want %q", got, want)
+	}
+}

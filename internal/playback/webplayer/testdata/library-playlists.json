@@ -1,0 +1,47 @@
+{
+  "next": "/v1/me/library/playlists?offset=3",
+  "data": [
+    {
+      "id": "p.A1b2C3d4E5f6G7",
+      "type": "library-playlists",
+      "href": "/v1/me/library/playlists/p.A1b2C3d4E5f6G7",
+      "attributes": {
+        "canEdit": true,
+        "name": "Afternoon Focus",
+        "isPublic": false,
+        "hasCatalog": true,
+        "dateAdded": "2024-03-02T10:00:00Z",
+        "lastModifiedDate": "2024-03-09T18:30:00Z",
+        "playParams": {"id": "p.A1b2C3d4E5f6G7", "kind": "playlist", "isLibrary": true},
+        "description": {"standard": "Quiet songs for working."}
+      }
+    },
+    {
+      "id": "p.B2c3D4e5F6g7H8",
+      "type": "library-playlists",
+      "href": "/v1/me/library/playlists/p.B2c3D4e5F6g7H8",
+      "attributes": {
+        "canEdit": false,
+        "name": "Evening Calm",
+        "isPublic": false,
+        "hasCatalog": true,
+        "dateAdded": "2023-11-20T21:00:00Z",
+        "playParams": {"id": "p.B2c3D4e5F6g7H8", "kind": "playlist", "isLibrary": true, "globalId": "pl.u-AbCdEfGh123"}
+      }
+    },
+    {
+      "id": "p.C3d4E5f6G7h8I9",
+      "type": "library-playlists",
+      "href": "/v1/me/library/playlists/p.C3d4E5f6G7h8I9",
+      "attributes": {
+        "canEdit": true,
+        "name": "Morning Run",
+        "isPublic": false,
+        "hasCatalog": true,
+        "dateAdded": "2024-01-15T07:00:00Z",
+        "playParams": {"id": "p.C3d4E5f6G7h8I9", "kind": "playlist", "isLibrary": true}
+      }
+    }
+  ],
+  "meta": {"total": 6}
+}

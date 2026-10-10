@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "id": "p.A1b2C3d4E5f6G7",
+      "type": "library-playlists",
+      "href": "/v1/me/library/playlists/p.A1b2C3d4E5f6G7",
+      "attributes": {
+        "canEdit": true,
+        "name": "Afternoon Focus",
+        "isPublic": false,
+        "hasCatalog": true,
+        "dateAdded": "2024-03-02T10:00:00Z",
+        "lastModifiedDate": "2024-03-09T18:30:00Z",
+        "playParams": {"id": "p.A1b2C3d4E5f6G7", "kind": "playlist", "isLibrary": true},
+        "description": {"standard": "Quiet songs<br>for working &amp; reading."}
+      }
+    }
+  ]
+}

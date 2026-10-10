@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "id": "i.DDDD4444eeee",
+      "type": "library-songs",
+      "href": "/v1/me/library/songs/i.DDDD4444eeee",
+      "attributes": {
+        "name": "Closing Theme",
+        "artistName": "Example Artist",
+        "albumName": "Example Album",
+        "durationInMillis": 199999,
+        "playParams": {"id": "i.DDDD4444eeee", "kind": "song", "isLibrary": true, "reporting": true, "catalogId": "1000000005"}
+      }
+    },
+    {
+      "id": "i.EEEE5555ffff",
+      "type": "library-songs",
+      "href": "/v1/me/library/songs/i.EEEE5555ffff",
+      "attributes": {
+        "name": "Odd Catalog Id",
+        "artistName": "Example Artist",
+        "albumName": "Example Album",
+        "playParams": {"id": "i.EEEE5555ffff", "kind": "song", "isLibrary": true, "catalogId": 1000000006}
+      }
+    }
+  ],
+  "meta": {"total": 6}
+}

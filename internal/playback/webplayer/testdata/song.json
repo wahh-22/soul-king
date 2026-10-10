@@ -1,0 +1,107 @@
+{
+ "data": [
+  {
+   "id": "6817757404",
+   "type": "songs",
+   "href": "/v1/catalog/us/songs/6817757404",
+   "attributes": {
+    "albumName": "SUMMER - Single",
+    "artistName": "Samuel G & Angeliyo El Blanco",
+    "artwork": {
+     "bgColor": "13baee",
+     "height": 3000,
+     "textColor1": "060000",
+     "textColor2": "152315",
+     "textColor3": "09252f",
+     "textColor4": "154140",
+     "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b5/ed/65/b5ed6550-6944-4e81-d989-20654212bba6/1200220220359.jpg/{w}x{h}bb.jpg",
+     "width": 3000
+    },
+    "composerName": "Miguel angel Arjona Pérez & Samuel Gómez Huete",
+    "discNumber": 1,
+    "durationInMillis": 161630,
+    "genreNames": [
+     "Afro-fusion",
+     "Music",
+     "African"
+    ],
+    "hasLyrics": false,
+    "isAppleDigitalMaster": false,
+    "isrc": "BK4DA2683936",
+    "name": "SUMMER",
+    "playParams": {
+     "id": "6817757404",
+     "kind": "song"
+    },
+    "previews": [
+     {
+      "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/bd/55/23/bd552352-1405-d860-6587-085cbbead9b9/mzaf_1873718066623363384.plus.aac.p.m4a"
+     }
+    ],
+    "releaseDate": "2026-10-06",
+    "trackNumber": 1,
+    "url": "https://music.apple.com/us/album/summer/6817757403?i=6817757404"
+   },
+   "relationships": {
+    "albums": {
+     "href": "/v1/catalog/us/songs/6817757404/albums",
+     "data": [
+      {
+       "id": "6817757403",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/6817757403",
+       "attributes": {
+        "artistName": "Samuel G & Angeliyo El Blanco",
+        "artwork": {
+         "bgColor": "13baee",
+         "height": 3000,
+         "textColor1": "060000",
+         "textColor2": "152315",
+         "textColor3": "09252f",
+         "textColor4": "154140",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b5/ed/65/b5ed6550-6944-4e81-d989-20654212bba6/1200220220359.jpg/{w}x{h}bb.jpg",
+         "width": 3000
+        },
+        "copyright": "℗ 2026 Samuel G, Distribuido en exclusiva por ADA.",
+        "genreNames": [
+         "Afro-fusion",
+         "Music",
+         "African"
+        ],
+        "isCompilation": false,
+        "isComplete": true,
+        "isMasteredForItunes": false,
+        "isSingle": true,
+        "name": "SUMMER - Single",
+        "playParams": {
+         "id": "6817757403",
+         "kind": "album"
+        },
+        "recordLabel": "Samuel G",
+        "releaseDate": "2026-10-06",
+        "trackCount": 1,
+        "upc": "1200220220359",
+        "url": "https://music.apple.com/us/album/summer-single/6817757403"
+       }
+      }
+     ]
+    },
+    "artists": {
+     "href": "/v1/catalog/us/songs/6817757404/artists",
+     "data": [
+      {
+       "id": "1158038197",
+       "type": "artists",
+       "href": "/v1/catalog/us/artists/1158038197"
+      },
+      {
+       "id": "1540572052",
+       "type": "artists",
+       "href": "/v1/catalog/us/artists/1540572052"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
