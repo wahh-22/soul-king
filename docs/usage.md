@@ -107,9 +107,10 @@ playlist endpoints take catalog ids): `l` and `a` show a notice.
 
 ## Local files
 
-nu11signal also plays the music files on your computer, on macOS beside
-Apple Music and on Linux (or without the helper, or with `--local`) on
-their own. The folders come from `"music_dirs"` in `config.json` (see
+nu11signal also plays the music files on your computer, beside Apple Music
+(through the helper on macOS, the web player on Linux, see
+[Apple Music on Linux](#apple-music-on-linux-experimental)), or on their
+own without it or with `--local`. The folders come from `"music_dirs"` in `config.json` (see
 [Settings](#settings)), `~` meaning your home; without it, `~/Music`:
 
 ```json
@@ -140,6 +141,92 @@ their own. The folders come from `"music_dirs"` in `config.json` (see
 When Apple Music access is refused, nu11signal says so on the status line
 and keeps playing the local files; grant access (System Settings › Privacy
 & Security › Media & Apple Music) and restart to get the catalog back.
+
+## Apple Music on Linux (experimental)
+
+On Linux, nu11signal plays Apple Music through Apple's own web player
+(music.apple.com), in a Google Chrome or Chromium it starts hidden, with
+no window, and drives over a private pipe (no debugging port is opened).
+You sign in once, and the session stays in nu11signal's own browser
+profile. nu11signal never reads your password, tokens or cookies.
+
+**Requirements:** Google Chrome or Chromium, either one, with the Widevine
+CDM that plays protected music. Google Chrome ships with it. Chromium
+usually does not: add it (for example, copy Google Chrome's
+`WidevineCdm` directory next to the Chromium binary, as in
+`/usr/lib/chromium/WidevineCdm`); on ARM64, where Google ships no Linux
+Chrome, Chromium with Widevine added is the way. The browser is looked up
+as `google-chrome`, `google-chrome-stable`, `chromium` and
+`chromium-browser` on `PATH`, then in the usual install directories;
+`NU11SIGNAL_BROWSER` (an absolute path) chooses one instead. Snap and
+Flatpak browsers are not supported.
+
+For containers and unusual setups, `NU11SIGNAL_BROWSER_FLAGS` adds
+space-separated flags to the browser's command line, for both
+`nu11signal` and `--apple-music-login`, for example
+`NU11SIGNAL_BROWSER_FLAGS="--no-sandbox --ozone-platform=wayland"`. Each
+must be a `--flag` or `--flag=value`; `--remote-debugging-*` and
+`--user-data-dir` are refused, and any other value stops startup with
+the reason. `--no-sandbox` weakens the browser's isolation from the rest
+of your system: use it only where the sandbox cannot run, such as some
+containers.
+
+1. Sign in once:
+
+   ```sh
+   nu11signal --apple-music-login
+   ```
+
+   A browser window opens at music.apple.com; sign in to Apple Music
+   there. The window closes by itself once you are signed in, and the
+   command says `Signed in. Run nu11signal to play.` (or that you already
+   were). `ctrl+c` cancels it and closes the window. If no usable browser
+   is found, it says what is missing.
+2. Run `nu11signal`. Apple Music joins the local files, as the helper
+   does on macOS.
+
+The profile lives in `~/.config/nu11signal/webplayer` (under
+`$XDG_CONFIG_HOME` when set), readable by you only; nu11signal refuses a
+profile directory that is open to other users and says how to fix it.
+Only one browser can use the profile at a time, so quit nu11signal before
+`--apple-music-login` and close the sign-in window before `nu11signal`;
+otherwise startup stops with `the Apple Music profile is in use; close
+the other nu11signal or login window`.
+
+Without a Chrome or Chromium with Widevine, nu11signal plays the local
+files alone, without a message, as before (`--apple-music-login` tells
+you what is missing). A browser that is found but cannot start, or a
+music.apple.com that does not load within 30 seconds (offline, for
+example), leaves the local files playing alone too, and the status line
+says why once: `apple music unavailable (browser did not start) // local
+files only` or `apple music unavailable (web player did not load) //
+local files only`. `nu11signal --local` plays the local files alone
+without starting the browser. `--demo` does not start it either. On macOS, `--apple-music-login` is an error: Apple Music signs
+in through the helper there.
+
+Until the profile is signed in, the status line says `apple music waiting
+for authorization // quit and run nu11signal --apple-music-login`, and the
+local files play as usual; nu11signal asks again every few seconds and
+says `apple music ready` once it is signed in.
+
+- **Works:** search and the artist, album and playlist pages; playing
+  from a page or an album as a queue; your library playlists in
+  PLAYLISTS, their pages and playing them (songs that are not in the
+  Apple Music catalog, such as uploads, are listed but skipped, and
+  cannot be started from); pause, resume, stop, next and
+  previous, seeking, the loop (repeat) mode and the volume (the web
+  player's own: `VOL`); favorites (seeing and marking loved songs, `l`),
+  creating playlists and adding songs to them (`a`), as in
+  [Editing the library](#editing-the-library). Once a song was played,
+  NOW PLAYING shows what the web player reports: the title, artist and
+  album, playing or paused, the progress and the loop mode, asked every
+  second. Quitting nu11signal
+  stops the playback and closes the hidden browser. A browser that exits
+  while nu11signal runs is reported on the status line, and its music
+  shows as stopped.
+- **Resources:** the hidden browser is far heavier than the macOS helper:
+  on the test machine (ARM64, no GPU) it took roughly 10 % of one core
+  and about 750 MB of memory while playing, and less while paused.
 
 ## Keys
 
@@ -375,7 +462,8 @@ The choice is saved to `"theme"` in `nu11signal/config.json` under
 The file is written only when a theme is chosen, atomically (a temporary
 file renamed over it), private (`0600`, its directory `0700`), keeping the
 fields it does not know and the ones only you write (`"update_check"`,
-`"music_dirs"`, see [Local files](#local-files)). A file that is not valid JSON is left alone and
+`"music_dirs"`, see [Local files](#local-files)). Obsolete settings are ignored
+on load and preserved as unknown fields when saving. A file that is not valid JSON is left alone and
 the choice is not saved (the status line says so); a theme name nu11signal
 does not know starts `BLUESHIFT` silently. A former theme name still applies
 its theme (`"BLUE"` is `BLUESHIFT`, `"NIGHT CITY"` is `REDSHIFT`), saved

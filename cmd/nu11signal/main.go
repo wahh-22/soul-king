@@ -4,11 +4,15 @@
 // On macOS it starts the signed MusicKit helper, found only through
 // $NU11SIGNAL_HELPER (an absolute path) or next to the nu11signal binary (see
 // helper.Locate), never in the working directory, and joins it with the
-// local files (see package composite). Without the helper, off macOS, or
-// with --local, it plays the local files alone. Those are the folders of
-// "music_dirs" in config.json (default ~/Music), scanned in the background
-// after startup. With --demo it runs against an in-process simulated
-// player instead. --calm (or
+// local files (see package composite). Without the helper, off macOS and
+// Linux, or with --local, it plays the local files alone. Those are the
+// folders of "music_dirs" in config.json (default ~/Music), scanned in the
+// background after startup. On Linux it joins the local files with Apple
+// Music played by Apple's web player in a hidden Chrome or Chromium (see
+// package webplayer), or plays them alone when no browser with Widevine is
+// found; --apple-music-login opens a window to sign in to Apple Music
+// there. With --demo it runs against an in-process simulated player
+// instead. --calm (or
 // NU11SIGNAL_CALM=1) starts with the signal effects off; x toggles them.
 // --version prints the release version stamped at link time: under the
 // Braille logo on a terminal, the bare version line otherwise. Release
@@ -40,6 +44,7 @@ import (
 	"github.com/wahh-22/nu11signal/internal/playback/composite"
 	"github.com/wahh-22/nu11signal/internal/playback/demo"
 	"github.com/wahh-22/nu11signal/internal/playback/local"
+	"github.com/wahh-22/nu11signal/internal/playback/webplayer"
 	"github.com/wahh-22/nu11signal/internal/radio"
 	"github.com/wahh-22/nu11signal/internal/update"
 )
@@ -69,6 +74,10 @@ func stampMismatch() bool {
 // startTimeout bounds launching the helper until it reports ready.
 const startTimeout = 10 * time.Second
 
+// webPlayerStartTimeout bounds starting the web player until its page is
+// ready: a browser and music.apple.com take longer than the helper.
+const webPlayerStartTimeout = 30 * time.Second
+
 // calmEnv set to 1 starts with the signal effects off, as --calm does.
 const calmEnv = "NU11SIGNAL_CALM"
 
@@ -82,11 +91,13 @@ func main() {
 		stdoutTerminal: func() bool {
 			return isTerminal(os.Stdout)
 		},
-		goos:         runtime.GOOS,
-		openLocal:    openLocal,
-		locateHelper: helper.Locate,
-		startHelper:  startHelper,
-		runUI:        runUI,
+		goos:            runtime.GOOS,
+		openLocal:       openLocal,
+		locateHelper:    helper.Locate,
+		startHelper:     startHelper,
+		openWebPlayer:   openWebPlayer,
+		loginAppleMusic: webplayer.Login,
+		runUI:           runUI,
 	}))
 }
 
@@ -106,6 +117,13 @@ type deps struct {
 	locateHelper func() (string, error)
 	// startHelper launches the helper at path; ctx bounds only startup.
 	startHelper func(ctx context.Context, path string) (playback.Player, error)
+	// openWebPlayer starts Apple Music through the web player on Linux
+	// (webplayer.Open); ctx bounds only startup. An error wrapping
+	// webplayer.ErrNoBrowser means no usable browser was found.
+	openWebPlayer func(ctx context.Context) (playback.Player, error)
+	// loginAppleMusic signs in to Apple Music in a browser window on
+	// Linux (webplayer.Login), telling the user what to do on out.
+	loginAppleMusic func(ctx context.Context, out io.Writer) error
 	// runUI runs the radio UI against player until the user quits; recents
 	// stores recent searches (nil keeps them in memory only); settings is
 	// the settings file (nil keeps the defaults); calm starts the signal
@@ -132,12 +150,31 @@ func run(args []string, d deps) int {
 		printVersion(d.stdout, d.stdoutTerminal != nil && d.stdoutTerminal())
 		return 0
 	}
+	if opts.login {
+		if err := login(d); err != nil {
+			fmt.Fprintln(d.stderr, "nu11signal:", err)
+			return 1
+		}
+		return 0
+	}
 	calm := opts.calm || os.Getenv(calmEnv) == "1"
 	if err := play(opts, calm, d); err != nil {
 		fmt.Fprintln(d.stderr, "nu11signal:", err)
 		return 1
 	}
 	return 0
+}
+
+// login runs --apple-music-login: the sign-in window, until the user
+// signed in (or was already), an interrupt cancels it, or it fails; the
+// window is closed in every case.
+func login(d deps) error {
+	if d.goos == "darwin" {
+		return errors.New("--apple-music-login is for Linux; on macOS Apple Music signs in through the helper")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	return d.loginAppleMusic(ctx, d.stdout)
 }
 
 func play(opts options, calm bool, d deps) error {
@@ -244,6 +281,8 @@ type options struct {
 	local   bool
 	calm    bool
 	version bool
+	// login signs in to Apple Music for the web player (Linux) and exits.
+	login bool
 }
 
 // parseFlags parses args (without the program name); errors and usage go
@@ -256,6 +295,7 @@ func parseFlags(args []string, output io.Writer) (options, error) {
 	fs.BoolVar(&opts.local, "local", false, "play the local music files only (music_dirs in config.json, default ~/Music), without Apple Music")
 	fs.BoolVar(&opts.calm, "calm", false, "start with the signal effects (glitches, text glitches, alerts) off; also "+calmEnv+"=1")
 	fs.BoolVar(&opts.version, "version", false, "print the version and exit")
+	fs.BoolVar(&opts.login, "apple-music-login", false, "Linux: open a browser window to sign in to Apple Music for the web player, then exit")
 	if err := fs.Parse(args); err != nil {
 		return options{}, err
 	}
@@ -345,16 +385,24 @@ func isTerminal(f *os.File) bool {
 }
 
 // openPlayer returns the player: the demo; the local files alone (with
-// --local, off macOS, or when the helper is not found); or Apple Music
-// through the helper joined with the local files. A helper that is found
-// but fails to start is an error: it is installed, so it is broken.
+// --local, off macOS and Linux, when the helper is not found, or on Linux
+// when no Chrome or Chromium with Widevine is); Apple Music through the
+// web player joined with the local files (Linux); or Apple Music through
+// the helper joined with the local files (macOS). A helper that is found
+// but fails to start is an error: it is installed, so it is broken. So is
+// a web player whose profile another nu11signal or sign-in window holds;
+// one whose browser does not start, or whose page does not load, leaves
+// the local files alone with a notice (see openLinux).
 func openPlayer(opts options, settings config.Source, d deps) (playback.Player, error) {
 	if opts.demo {
 		return demo.New(demo.Options{}), nil
 	}
 	dirs := musicDirs(settings)
-	if opts.local || d.goos != "darwin" {
+	if opts.local || (d.goos != "darwin" && d.goos != "linux") {
 		return composite.New(nil, d.openLocal(dirs)), nil
+	}
+	if d.goos == "linux" {
+		return openLinux(dirs, d)
 	}
 	path, err := d.locateHelper()
 	if errors.Is(err, helper.ErrHelperNotFound) {
@@ -410,6 +458,50 @@ func musicDirs(settings config.Source) []string {
 		out = append(out, d)
 	}
 	return out
+}
+
+// openLinux joins Apple Music through the web player with the local files
+// of dirs. Without a usable browser the local files play alone, quietly:
+// the UI is about to take the terminal, and a local-only session is what
+// Linux had before (nu11signal --apple-music-login says what is missing).
+// A browser that does not start, or a music.apple.com that does not load
+// (offline), leaves the local files alone too, and the UI says why. Any
+// other failure, such as a profile in use, and an interrupt, stop startup.
+// The web player authorizes late: until the profile is signed in, the
+// composite says so and plays the local files meanwhile.
+func openLinux(dirs []string, d deps) (playback.Player, error) {
+	// ctx bounds only the startup (the browser lives until the player is
+	// closed); an interrupt during startup aborts it and closes the
+	// half-started browser.
+	interrupted, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	ctx, cancel := context.WithTimeout(interrupted, webPlayerStartTimeout)
+	defer cancel()
+	apple, err := d.openWebPlayer(ctx)
+	switch {
+	case err == nil:
+		return composite.New(apple, d.openLocal(dirs)), nil
+	case errors.Is(err, webplayer.ErrNoBrowser):
+		return composite.New(nil, d.openLocal(dirs)), nil
+	case interrupted.Err() != nil:
+	case errors.Is(err, webplayer.ErrNotLoaded):
+		return composite.LocalOnly(d.openLocal(dirs), "web player did not load"), nil
+	case errors.Is(err, webplayer.ErrLaunchFailed):
+		return composite.LocalOnly(d.openLocal(dirs), "browser did not start"), nil
+	}
+	return nil, fmt.Errorf("start web player: %w", err)
+}
+
+// openWebPlayer starts Apple Music through the web player, the browser's
+// output discarded.
+func openWebPlayer(ctx context.Context) (playback.Player, error) {
+	// Return a nil interface, not a typed nil *webplayer.Player, on
+	// failure.
+	p, err := webplayer.Open(ctx, webplayer.OpenOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 // openLocal returns the local files player, empty until the scan of dirs,
