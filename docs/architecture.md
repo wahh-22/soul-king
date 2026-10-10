@@ -2,7 +2,7 @@
 
 [← Back to the README](../README.md) · [Documentation index](../README.md#documentation)
 
-How the Go UI and the Swift MusicKit helper fit together, how the binary finds the helper, and the JSON lines protocol between them.
+How the Go UI, the macOS Swift MusicKit helper and the Linux web player fit together, how the binary finds the helper, and the JSON lines protocol between them.
 
 ## Overview
 
@@ -18,7 +18,8 @@ How the Go UI and the Swift MusicKit helper fit together, how the binary finds t
 |------|-------|------|
 | Radio UI | `internal/radio` | Model/update/view; depends only on the `Player` port |
 | Player port | `internal/playback` | Domain types, the `Player` interface, sources and capabilities |
-| Helper adapter | `internal/helper` | Starts the helper, correlates requests, streams state |
+| Helper adapter | `internal/helper` | Starts the macOS helper, correlates requests, streams state |
+| Web player | `internal/playback/webplayer` | Drives Apple's web player in a hidden Chrome or Chromium on Linux |
 | Local player | `internal/playback/local` | Scans, decodes and plays the computer's music files |
 | Composite player | `internal/playback/composite` | Joins Apple Music and the local files, routing by id namespace (`local:`) |
 | Demo player | `internal/playback/demo` | In-process simulated player for `--demo` |
@@ -29,6 +30,24 @@ helper renders the music itself, so the rain plays its real spectrum (see
 [Spectrum](audio.md#spectrum) and [Rain](effects.md#rain)). Otherwise (system volume,
 `--demo`, macOS before 15) the rain is decorative: it follows the playback
 state, not the sound.
+
+## Linux web player (experimental)
+
+On Linux, `internal/playback/webplayer` starts a headless Chrome or Chromium
+with Widevine and drives music.apple.com's page MusicKit over CDP (Chrome
+DevTools Protocol), using `--remote-debugging-pipe`, not a debugging port.
+Calls use JSON-encoded arguments and return plain JSON values; nu11signal
+never reads tokens, cookies or browser storage. There is no developer token,
+key or companion server.
+
+The user signs in once with `nu11signal --apple-music-login`; the session
+stays in nu11signal's own owner-only browser profile. The web player is the
+composite player's Apple Music primary beside the local player. Local files
+remain available while authorization is pending; authorization is checked
+again every few seconds, so Apple Music can join later. If the browser is
+unavailable or cannot start or load the page, playback falls back to local
+files. See [Apple Music on Linux](usage.md#apple-music-on-linux-experimental)
+for setup and limitations.
 
 ## Helper lookup
 

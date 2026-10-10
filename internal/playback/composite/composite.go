@@ -20,7 +20,12 @@
 //     local files need no permission. The refusal is reported once on
 //     Errors and the primary is left out for the session (no catalog, no
 //     Apple playlists), so the UI stays usable for local files instead of
-//     stopping at an access error.
+//     stopping at an access error. A primary that authorizes late
+//     (playback.LateAuthorizer) and is not determined yet waits instead:
+//     reported once, left out like a refused one, and asked again by each
+//     Authorize and every few seconds in the background until it is
+//     authorized (then used, reported ready) or refuses (then left out for
+//     the session).
 package composite
 
 import (
@@ -40,6 +45,20 @@ const buffer = 16
 // the play's own context leaves more time.
 const stopTimeout = 3 * time.Second
 
+// recheckInterval is how often a pending primary is asked again, and
+// recheckTimeout bounds each question: longer than a bridge request, so
+// the primary answers a bridge that is down itself.
+const (
+	recheckInterval = 3 * time.Second
+	recheckTimeout  = 10 * time.Second
+)
+
+// newTicker ticks every recheckInterval until stopped.
+func newTicker() (<-chan time.Time, func()) {
+	t := time.NewTicker(recheckInterval)
+	return t.C, t.Stop
+}
+
 // Player is a playback.Player (and LevelSource, Capabilities and
 // LibraryWatcher) routing between a primary and a local backend. Methods
 // are safe for concurrent use.
@@ -53,14 +72,22 @@ type Player struct {
 	changed chan struct{}
 	done    chan struct{}
 	wg      sync.WaitGroup
+	// life ends with Close, ending a re-check's question in flight.
+	life context.Context
+	end  context.CancelFunc
 
 	closeOnce sync.Once
 	closeErr  error
 
-	mu       sync.Mutex
-	active   playback.Player
-	appleOff bool // the primary refused authorization or failed it
-	closed   bool // the channels are closed
+	// ticker paces the re-check of a pending primary; tests replace it.
+	ticker func() (<-chan time.Time, func())
+
+	mu           sync.Mutex
+	active       playback.Player
+	appleOff     bool // the primary refused authorization or failed it
+	applePending bool // the primary authorizes late and has not yet
+	rechecking   bool // a goroutine asks the pending primary again
+	closed       bool // the channels are closed
 }
 
 // New joins primary (nil when there is no Apple Music) and local, which
@@ -75,11 +102,13 @@ func New(primary, local playback.Player) *Player {
 		levels:  make(chan playback.Spectrum, 1),
 		changed: make(chan struct{}, 1),
 		done:    make(chan struct{}),
+		ticker:  newTicker,
 		active:  local,
 	}
 	if primary != nil {
 		p.active = primary
 	}
+	p.life, p.end = context.WithCancel(context.Background())
 	for _, b := range p.backends() {
 		p.forward(b)
 	}
@@ -95,6 +124,15 @@ func New(primary, local playback.Player) *Player {
 			}
 		}()
 	}
+	return p
+}
+
+// LocalOnly joins no primary with local, as New(nil, local) does, for an
+// Apple Music that could not start, and reports once on Errors that it is
+// unavailable for reason.
+func LocalOnly(local playback.Player, reason string) *Player {
+	p := New(nil, local)
+	p.notify(unavailableFor(reason))
 	return p
 }
 
@@ -214,12 +252,12 @@ func (p *Player) current() playback.Player {
 	return p.active
 }
 
-// apple is the primary backend, or ErrUnsupported when there is none or it
-// refused authorization.
+// apple is the primary backend, or ErrUnsupported when there is none, it
+// refused authorization or it is still waiting for it.
 func (p *Player) apple() (playback.Player, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.primary == nil || p.appleOff {
+	if p.primary == nil || p.appleOff || p.applePending {
 		return nil, playback.ErrUnsupported
 	}
 	return p.primary, nil
@@ -259,15 +297,16 @@ func (p *Player) switchTo(ctx context.Context, b playback.Player) {
 
 // Supports reports whether c is offered for id (see playback.Capabilities):
 // the catalog, favorites and playlist editing only for Apple Music ids (or
-// with an empty id, at all) while the primary is there and authorized.
+// with an empty id, at all) while the primary is there, authorized and,
+// when it implements playback.Capabilities itself, offers them.
 func (p *Player) Supports(c playback.Capability, id string) bool {
 	switch c {
 	case playback.CapCatalogSearch, playback.CapFavorites, playback.CapEditPlaylists:
 		if id != "" && playback.SourceOf(id) == playback.SourceLocal {
 			return false
 		}
-		_, err := p.apple()
-		return err == nil
+		apple, err := p.apple()
+		return err == nil && playback.Supports(apple, c, id)
 	}
 	return true
 }
@@ -275,30 +314,170 @@ func (p *Player) Supports(c playback.Capability, id string) bool {
 // Authorize authorizes the local backend and, when there is one, the
 // primary; a primary that refuses or fails is left out (see the package
 // documentation) and the result is still authorized.
+//
+// A primary that authorizes late and answers AuthNotDetermined is pending
+// instead, and asked again by the next Authorize and, every
+// recheckInterval, by one goroutine (see recheck). The question is asked
+// there, not by the calls apple gates: Supports must stay cheap (the UI
+// asks while drawing) and they have a context to bound it.
 func (p *Player) Authorize(ctx context.Context) (playback.AuthStatus, error) {
 	if _, err := p.local.Authorize(ctx); err != nil {
 		return "", err
 	}
-	apple, err := p.apple()
-	if err != nil {
+	p.mu.Lock()
+	off := p.primary == nil || p.appleOff
+	p.mu.Unlock()
+	if off {
 		return playback.AuthAuthorized, nil
 	}
-	s, err := apple.Authorize(ctx)
+	s, err := p.primary.Authorize(ctx)
 	if err == nil && s == playback.AuthAuthorized {
+		p.mu.Lock()
+		p.applePending = false
+		p.mu.Unlock()
 		return s, nil
 	}
+	if err == nil && s == playback.AuthNotDetermined && authorizesLate(p.primary) {
+		p.mu.Lock()
+		first := !p.applePending && !p.appleOff
+		p.applePending = true
+		p.leavePrimary()
+		p.mu.Unlock()
+		if first {
+			p.notify(waiting(p.primary))
+			p.startRecheck()
+		}
+		return playback.AuthAuthorized, nil
+	}
+	p.mu.Lock()
+	p.appleOff, p.applePending = true, false
+	p.leavePrimary()
+	p.mu.Unlock()
+	p.notify(unavailable(s, err))
+	return playback.AuthAuthorized, nil
+}
+
+// waiting is the notice of a primary that waits for authorization, with
+// its hint on what to do (playback.AuthorizationHinter) when it has one.
+func waiting(primary playback.Player) error {
+	const notice = "apple music waiting for authorization"
+	if h, ok := primary.(playback.AuthorizationHinter); ok {
+		if hint := h.AuthorizationHint(); hint != "" {
+			return errors.New(notice + " // " + hint)
+		}
+	}
+	return errors.New(notice)
+}
+
+// unavailable is the notice of a primary left out for answering s, err.
+func unavailable(s playback.AuthStatus, err error) error {
 	reason := "access " + string(s)
 	if err != nil {
 		reason = err.Error()
 	}
+	return unavailableFor(reason)
+}
+
+// unavailableFor is the notice of a primary left out for reason.
+func unavailableFor(reason string) error {
+	return fmt.Errorf("apple music unavailable (%s) // local files only", reason)
+}
+
+// startRecheck starts the goroutine asking the pending primary again,
+// unless one runs or the Player is closing.
+func (p *Player) startRecheck() {
 	p.mu.Lock()
-	p.appleOff = true
+	defer p.mu.Unlock()
+	if p.rechecking || p.life.Err() != nil {
+		return
+	}
+	p.rechecking = true
+	p.wg.Add(1)
+	go p.recheck()
+}
+
+// recheck asks the pending primary again at every tick, since the UI asks
+// Authorize only at startup, until it answers authorized (then it joins,
+// reported "apple music ready"), refuses or fails (then it is left out as
+// by Authorize), is no longer pending (an Authorize settled it), or Close.
+// A question that outlives recheckTimeout leaves it pending. The UI reads
+// Supports again whenever it draws, so the catalog appears once ready.
+func (p *Player) recheck() {
+	defer p.wg.Done()
+	ticks, stop := p.ticker()
+	defer stop()
+	for {
+		select {
+		case <-p.done:
+			return
+		case <-ticks:
+		}
+		if !p.stillPending() {
+			return
+		}
+		ctx, cancel := context.WithTimeout(p.life, recheckTimeout)
+		s, err := p.primary.Authorize(ctx)
+		timedOut := err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded)
+		cancel()
+		if p.life.Err() != nil {
+			return
+		}
+		if timedOut || (err == nil && s == playback.AuthNotDetermined) {
+			continue
+		}
+		p.settle(s, err)
+		return
+	}
+}
+
+// stillPending reports whether the primary still waits; when not, the
+// re-check ends.
+func (p *Player) stillPending() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.applePending && !p.appleOff {
+		return true
+	}
+	p.rechecking = false
+	return false
+}
+
+// settle ends the re-check with the primary's answer s, err (authorized,
+// refused or failed), unless something else settled the wait meanwhile.
+func (p *Player) settle(s playback.AuthStatus, err error) {
+	p.mu.Lock()
+	p.rechecking = false
+	if !p.applePending || p.appleOff {
+		p.mu.Unlock()
+		return
+	}
+	p.applePending = false
+	ready := err == nil && s == playback.AuthAuthorized
+	if !ready {
+		p.appleOff = true
+		p.leavePrimary()
+	}
+	p.mu.Unlock()
+	if ready {
+		p.notify(errors.New("apple music ready"))
+		return
+	}
+	p.notify(unavailable(s, err))
+}
+
+// leavePrimary makes the local backend active in place of the primary.
+// p.mu must be held.
+func (p *Player) leavePrimary() {
 	if p.active == p.primary {
 		p.active = p.local
 	}
-	p.mu.Unlock()
-	p.notify(fmt.Errorf("apple music unavailable (%s) // local files only", reason))
-	return playback.AuthAuthorized, nil
+}
+
+// authorizesLate reports whether b's authorization can complete after it
+// answered AuthNotDetermined (see playback.LateAuthorizer).
+func authorizesLate(b playback.Player) bool {
+	l, ok := b.(playback.LateAuthorizer)
+	return ok && l.AuthorizesLate()
 }
 
 // Playlists lists the primary's playlists, then the local ones. A backend
@@ -557,7 +736,11 @@ func (p *Player) LibraryChanged() <-chan struct{} { return p.changed }
 // first one's result.
 func (p *Player) Close() error {
 	p.closeOnce.Do(func() {
+		// Under mu, so no re-check starts once Close waits for them.
+		p.mu.Lock()
+		p.end()
 		close(p.done)
+		p.mu.Unlock()
 		bs := p.backends()
 		errs := make([]error, len(bs))
 		var wg sync.WaitGroup

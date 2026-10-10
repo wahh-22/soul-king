@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -20,6 +21,7 @@ import (
 	"github.com/wahh-22/nu11signal/internal/playback/composite"
 	"github.com/wahh-22/nu11signal/internal/playback/demo"
 	"github.com/wahh-22/nu11signal/internal/playback/playbacktest"
+	"github.com/wahh-22/nu11signal/internal/playback/webplayer"
 	"github.com/wahh-22/nu11signal/internal/update"
 )
 
@@ -83,6 +85,14 @@ func newTestEnv(t *testing.T) *testEnv {
 		startHelper: func(context.Context, string) (playback.Player, error) {
 			t.Error("startHelper called unexpectedly")
 			return nil, errors.New("unexpected start")
+		},
+		openWebPlayer: func(context.Context) (playback.Player, error) {
+			t.Error("openWebPlayer called unexpectedly")
+			return nil, errors.New("unexpected web player")
+		},
+		loginAppleMusic: func(context.Context, io.Writer) error {
+			t.Error("loginAppleMusic called unexpectedly")
+			return errors.New("unexpected login")
 		},
 		runUI: func(p playback.Player, r history.Recents, cfg config.Source, calm bool, updates update.Checker) error {
 			e.uiRuns++
@@ -166,14 +176,201 @@ func TestRunHelperNotFoundPlaysLocalFiles(t *testing.T) {
 	assertLocalOnly(t, e)
 }
 
-func TestRunOffMacOSPlaysLocalFilesWithoutTheHelper(t *testing.T) {
+// onLinux makes e a Linux run whose web player finds no usable browser.
+func onLinux(e *testEnv) {
+	e.d.goos = "linux"
+	e.d.openWebPlayer = func(context.Context) (playback.Player, error) {
+		return nil, &webplayer.NoBrowserError{Arch: "linux_x64"}
+	}
+}
+
+// Without a usable browser Linux plays the local files alone, quietly:
+// nothing on stderr, which the UI is about to take over.
+func TestRunOnLinuxWithoutABrowserPlaysLocalFiles(t *testing.T) {
 	tempHome(t)
 	e := newTestEnv(t) // locateHelper fails the test if called
-	e.d.goos = "linux"
+	onLinux(e)
 	if code := run(nil, e.d); code != 0 {
 		t.Fatalf("exit code = %d (stderr %q)", code, e.stderr.String())
 	}
 	assertLocalOnly(t, e)
+	if e.stderr.Len() != 0 {
+		t.Errorf("stderr = %q; want nothing", e.stderr.String())
+	}
+}
+
+func TestRunOnLinuxJoinsTheWebPlayerWithTheLocalFiles(t *testing.T) {
+	tempHome(t)
+	e := newTestEnv(t) // locateHelper and startHelper fail the test if called
+	e.d.goos = "linux"
+	player := newFakePlayer()
+	var bounded bool
+	e.d.openWebPlayer = func(ctx context.Context) (playback.Player, error) {
+		_, bounded = ctx.Deadline()
+		return player, nil
+	}
+	if code := run(nil, e.d); code != 0 {
+		t.Fatalf("exit code = %d (stderr %q)", code, e.stderr.String())
+	}
+	if !bounded {
+		t.Error("the web player's startup has no deadline")
+	}
+	c, ok := e.uiPlayer.(*composite.Player)
+	if !ok || !c.Supports(playback.CapCatalogSearch, "") {
+		t.Fatalf("UI got player %T; want the web player joined with the local files", e.uiPlayer)
+	}
+	if player.closed != 1 {
+		t.Fatalf("web player closed %d times; want 1", player.closed)
+	}
+	if e.local == nil || !e.local.Closed() {
+		t.Fatal("the local backend was not opened and closed")
+	}
+}
+
+// A browser that is there but cannot start the web player stops startup,
+// as a broken helper does on macOS.
+func TestRunOnLinuxWebPlayerFailureExitsOne(t *testing.T) {
+	tempHome(t)
+	e := newTestEnv(t)
+	e.d.goos = "linux"
+	e.d.openWebPlayer = func(context.Context) (playback.Player, error) {
+		return nil, webplayer.ErrProfileInUse
+	}
+	if code := run(nil, e.d); code != 1 {
+		t.Fatalf("exit code = %d; want 1", code)
+	}
+	want := "nu11signal: start web player: " + webplayer.ErrProfileInUse.Error() + "\n"
+	if got := e.stderr.String(); got != want {
+		t.Fatalf("stderr = %q; want %q", got, want)
+	}
+	if e.uiRuns != 0 || e.local != nil {
+		t.Fatal("a failed web player opened the local files or started the UI")
+	}
+}
+
+// A web player that does not load (offline) or whose browser does not
+// start falls back to the local files, with one notice for the UI; the
+// interrupt that cancels startup still stops it.
+func TestRunOnLinuxWebPlayerThatDoesNotStartFallsBackToLocalFiles(t *testing.T) {
+	tests := []struct {
+		name, notice string
+		err          error
+	}{
+		{"page did not load", "apple music unavailable (web player did not load) // local files only",
+			fmt.Errorf("%w within 30s", webplayer.ErrNotLoaded)},
+		{"browser did not start", "apple music unavailable (browser did not start) // local files only",
+			fmt.Errorf("%w: %w", webplayer.ErrLaunchFailed, errors.New("exec format error"))},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempHome(t)
+			e := newTestEnv(t)
+			e.d.goos = "linux"
+			e.d.openWebPlayer = func(context.Context) (playback.Player, error) { return nil, tt.err }
+			if code := run(nil, e.d); code != 0 {
+				t.Fatalf("exit code = %d (stderr %q); want 0, local files only", code, e.stderr.String())
+			}
+			assertLocalOnly(t, e)
+			if e.stderr.Len() != 0 {
+				t.Errorf("stderr = %q; want nothing", e.stderr.String())
+			}
+			// The notices the UI did not read are still buffered.
+			var notices []string
+			for err := range e.uiPlayer.Errors() {
+				notices = append(notices, err.Error())
+			}
+			if want := []string{tt.notice}; !reflect.DeepEqual(notices, want) {
+				t.Fatalf("notices = %q; want %q", notices, want)
+			}
+		})
+	}
+}
+
+// Without a browser the fallback is silent: no notice either.
+func TestRunOnLinuxWithoutABrowserHasNoNotice(t *testing.T) {
+	tempHome(t)
+	e := newTestEnv(t)
+	onLinux(e)
+	if code := run(nil, e.d); code != 0 {
+		t.Fatalf("exit code = %d (stderr %q)", code, e.stderr.String())
+	}
+	for err := range e.uiPlayer.Errors() {
+		t.Errorf("notice %q; want none", err)
+	}
+}
+
+// --local and --demo do not start the web player.
+func TestRunOnLinuxLocalAndDemoSkipTheWebPlayer(t *testing.T) {
+	tempHome(t)
+	e := newTestEnv(t) // openWebPlayer fails the test if called
+	e.d.goos = "linux"
+	if code := run([]string{"--local"}, e.d); code != 0 {
+		t.Fatalf("--local: exit code = %d (stderr %q)", code, e.stderr.String())
+	}
+	assertLocalOnly(t, e)
+
+	e = newTestEnv(t)
+	e.d.goos = "linux"
+	if code := run([]string{"--demo"}, e.d); code != 0 {
+		t.Fatalf("--demo: exit code = %d (stderr %q)", code, e.stderr.String())
+	}
+	if _, ok := e.uiPlayer.(*demo.Player); !ok {
+		t.Fatalf("--demo: UI got player %T; want *demo.Player", e.uiPlayer)
+	}
+}
+
+func TestRunAppleMusicLoginOnLinux(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		wantCode   int
+		wantStderr string
+	}{
+		{"signed in", nil, 0, ""},
+		{"failed", errors.New("webplayer: sign-in cancelled"), 1, "nu11signal: webplayer: sign-in cancelled\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempHome(t)
+			e := newTestEnv(t) // the helper and the web player fail the test if called
+			e.d.goos = "linux"
+			calls := 0
+			e.d.loginAppleMusic = func(ctx context.Context, out io.Writer) error {
+				calls++
+				io.WriteString(out, "Signed in.\n")
+				return tt.err
+			}
+			if code := run([]string{"--apple-music-login"}, e.d); code != tt.wantCode {
+				t.Fatalf("exit code = %d; want %d", code, tt.wantCode)
+			}
+			if calls != 1 {
+				t.Fatalf("login ran %d times; want 1", calls)
+			}
+			if got := e.stdout.String(); got != "Signed in.\n" {
+				t.Errorf("stdout = %q; want the login's output", got)
+			}
+			if got := e.stderr.String(); got != tt.wantStderr {
+				t.Errorf("stderr = %q; want %q", got, tt.wantStderr)
+			}
+			if e.uiRuns != 0 || e.local != nil {
+				t.Fatal("--apple-music-login opened the local files or started the UI")
+			}
+		})
+	}
+}
+
+func TestRunAppleMusicLoginOnMacOSIsAnError(t *testing.T) {
+	tempHome(t)
+	e := newTestEnv(t) // login, the helper and the web player fail the test if called
+	if code := run([]string{"--apple-music-login"}, e.d); code != 1 {
+		t.Fatalf("exit code = %d; want 1", code)
+	}
+	if got, want := e.stderr.String(), "nu11signal: --apple-music-login is for Linux; on macOS Apple Music signs in through the helper\n"; got != want {
+		t.Fatalf("stderr = %q; want %q", got, want)
+	}
+	if e.uiRuns != 0 || e.local != nil {
+		t.Fatal("a rejected login opened the local files or started the UI")
+	}
 }
 
 func TestRunLocalFlagSkipsTheHelper(t *testing.T) {
@@ -188,7 +385,7 @@ func TestRunLocalFlagSkipsTheHelper(t *testing.T) {
 func TestRunScansMusicDirs(t *testing.T) {
 	home := tempHome(t)
 	e := newTestEnv(t)
-	e.d.goos = "linux"
+	onLinux(e)
 	if run(nil, e.d); !reflect.DeepEqual(e.localDirs, []string{filepath.Join(home, "Music")}) {
 		t.Errorf("default dirs = %q; want ~/Music", e.localDirs)
 	}
@@ -203,7 +400,7 @@ func TestRunScansMusicDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 	e = newTestEnv(t)
-	e.d.goos = "linux"
+	onLinux(e)
 	want := []string{filepath.Join(home, "tapes"), "/srv/music", home}
 	if run(nil, e.d); !reflect.DeepEqual(e.localDirs, want) {
 		t.Errorf("configured dirs = %q; want %q", e.localDirs, want)

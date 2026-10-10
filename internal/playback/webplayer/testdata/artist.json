@@ -1,0 +1,337 @@
+{
+ "data": [
+  {
+   "id": "657515",
+   "type": "artists",
+   "href": "/v1/catalog/us/artists/657515",
+   "attributes": {
+    "artwork": {
+     "bgColor": "131313",
+     "height": 1050,
+     "textColor1": "eba140",
+     "textColor2": "e29438",
+     "textColor3": "c08437",
+     "textColor4": "b87a31",
+     "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/8a/49/84/8a498443-718e-40c0-404e-d1380c2352b7/ami-identity-531db02daa273271c643ba631a46b9d5-2026-09-07T07-12-12.872Z_cropped.png/{w}x{h}bb.jpg",
+     "width": 1050
+    },
+    "genreNames": [
+     "Alternative"
+    ],
+    "name": "Radiohead",
+    "url": "https://music.apple.com/us/artist/radiohead/657515"
+   },
+   "relationships": {
+    "albums": {
+     "href": "/v1/catalog/us/artists/657515/albums",
+     "next": "/v1/catalog/us/artists/657515/albums?offset=25",
+     "data": [
+      {
+       "id": "1097861387",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/1097861387"
+      },
+      {
+       "id": "1109714933",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/1109714933"
+      },
+      {
+       "id": "1111577743",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/1111577743"
+      }
+     ]
+    }
+   },
+   "views": {
+    "full-albums": {
+     "href": "/v1/catalog/us/artists/657515/view/full-albums",
+     "next": "/v1/catalog/us/artists/657515/view/full-albums?offset=10",
+     "attributes": {
+      "title": "Albums"
+     },
+     "data": [
+      {
+       "id": "1111577743",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/1111577743",
+       "attributes": {
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "cecdd2",
+         "height": 1400,
+         "textColor1": "0c0a09",
+         "textColor2": "171616",
+         "textColor3": "333131",
+         "textColor4": "3c3b3b",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/b7/f2/5d/b7f25d91-4320-47c8-146a-6f84d5bc7e78/cover.jpg/{w}x{h}bb.jpg",
+         "width": 1400
+        },
+        "copyright": "℗ 2016 LLLP LLP under exclusive license to XL Recordings Ltd",
+        "editorialNotes": {
+         "short": "A gorgeous, grief-filled stunner from Radiohead’s later years.",
+         "standard": "For two decades, Radiohead’s recording career had been a seesaw between past and present—or between records that recalled its roots as a rock band, and ones that suggested the group members were actively seeking some next frontier. For 2011’s <i>The King of Limbs</i>, Radiohead had used sampling software to build eight amorphous songs from loops, each shifting like phantoms in the sky. But longtime producer Nigel Godrich wanted to go the other way as sessions began for Radiohead’s follow-up album. This time around, he captured the bandmates on tape as they dug into Thom Yorke’s demos for the first time. The sounds that emerged suggested a synthesis of Radiohead’s first quarter-century, with the electronic experimentation of their most iconoclastic works interlacing with the romantic surges of their earliest days. The resulting album, 2016’s <i>A Moon Shaped Pool</i> is perhaps the most assured-sounding album of Radiohead’s existence.\n\nIt’s also a record that expresses deep personal anguish and existential doubt. Yorke split from his longtime partner, Rachel Owen, as the band worked; after a battle with cancer, she would die seven months after the release of <i>A Moon Shaped Pool</i>. Many of these songs explore loss—not just of a relationship itself, but of the time spent in something that simply stops working: A fragile and haunted lullaby, “Daydreaming” surveys just how much our stubborn habits cost us, its tense strings slicing like a hot knife through Yorke’s mangled vocals. And during the devastating “Glass Eyes,” he takes a rare step into first-person narration, relaying the onset of a panic attack above lachrymose textures that also conjure that condition’s unsteady breaths. The album concludes with “True Love Waits”—an older Radiohead tune that fans had been bootlegging for years. A slow and balletic beauty, with piano traced by electronics so faint they suggest a whispering apparition, “True Love Waits” sends off the album with a hymn for holding on and being held in love.\n\nThe sessions for <i>A Moon Shaped Pool</i> were so fraught, the members hesitated to discuss it—even a year after the album’s release. “I don’t want to talk about it anymore, if that’s all right,” Ed O’Brien told a reporter. “I feel like the dust hasn’t settled.” But Radiohead again rose to the moment entirely, both in those songs about the tenderest parts of our hearts, and the songs that turned outward, especially on “The Numbers.” A power-to-the-people opus for the climate-change fight, it felt like Radiohead venturing back into politics, pointing us forward. “The future is inside us,” Yorke moans through a psychedelic haze. “It’s not somewhere else.”"
+        },
+        "genreNames": [
+         "Alternative",
+         "Music",
+         "Rock",
+         "Prog-Rock/Art Rock",
+         "Adult Alternative"
+        ],
+        "isCompilation": false,
+        "isComplete": true,
+        "isMasteredForItunes": true,
+        "isSingle": false,
+        "name": "A Moon Shaped Pool",
+        "playParams": {
+         "id": "1111577743",
+         "kind": "album"
+        },
+        "recordLabel": "XL Recordings",
+        "releaseDate": "2016-05-08",
+        "trackCount": 11,
+        "upc": "634904079055",
+        "url": "https://music.apple.com/us/album/a-moon-shaped-pool/1111577743"
+       }
+      },
+      {
+       "id": "1109714965",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/1109714965",
+       "attributes": {
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "934d28",
+         "height": 4000,
+         "textColor1": "f9faec",
+         "textColor2": "fbe3dd",
+         "textColor3": "e4d7c5",
+         "textColor4": "e6c5b9",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/af/b6/7b/afb67b4e-6cf8-10b3-31f1-1389e301166d/634904078768.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "copyright": "℗ 2011 LLLP LLP under exclusive license to XL Recordings Ltd",
+        "editorialNotes": {
+         "short": "Radiohead aims for reinvention—and renewal—on this surprising effort.",
+         "standard": "At the Reading Festival in the summer of 2009, Radiohead gave the people what they wanted. The group’s set began with “Creep,” the song that had nearly made Radiohead one-hit wonders, released on a debut album the band members had all but disavowed. The next 22 songs ran like a greatest-hits collage, as the band moved from the rock atmospherics of <i>The Bends</i> to the electronic abstractions of <i>Kid A</i>, from the aggressive polemics of <i>Hail to the Thief</i> to the delicate swells of <i>In Rainbows</i>. The performance felt like career capstone for a group frequently cited as one of the most important in rock. “It was kind of like, ‘Well, that’s that; don’t need to go there again now,’” singer Thom Yorke remembered a few years later. “So there was a lot of... ‘Well, OK, if we are gonna carry on, we need to do it for a new set of reasons.’”\n\nThis restlessness was a standard refrain for Radiohead, of course; this is a band that’s spent years toggling between sounds and styles. But the sessions the group members started that summer with longtime producer Nigel Godrich proved especially fraught as they searched for the next direction. Though Yorke had a few elliptical strummers in process, they weren’t quite working for his bandmates. So they took the tapes and dumped them into digital files, which they began to dig through like hip-hop producers, looking for little bits they could loop in order to build something bigger. “You had to simplify what you were doing,” guitarist Ed O’Brien remembered. “You couldn’t do loads of ideas.” Slowly and painstakingly, then, they amassed <i>The King of Limbs</i>, featuring eight tracks that asked, once again, what it meant to be Radiohead at all.\n\nThe big thematic ideas of Radiohead’s albums yield to a vague sense of displacement on <i>The King of Limbs</i>—a feeling of planned obsolescence for ordinary people. Yorke’s words hang as drapery over the tightly wound rhythms of opener “Bloom,” in which icy electronics linger in the distance like specters. He swivels inside of the percolating bass and drums of “Lotus Flower,” his falsetto filling the space between the beats with pure longing. Meanwhile, “Morning Mr. Magpie” buckles and jerks like Afrobeat, reduced to the scale of a rock band fretting for the future.\n\nThere are more straightforward moments here, especially the piano ache of “Codex,” but the overriding feeling of <i>The King of Limbs</i> is one of willful transition, of the band members recognizing that their venerated past is only useful as a springboard into a future they were very much trying to stake. “If you think this is over,” Yorke sings over chiming guitars and skittering bits at the end, “then you’re wrong.” This is Radiohead, once again, pushing for the vanguard."
+        },
+        "genreNames": [
+         "Alternative",
+         "Music",
+         "Rock",
+         "Adult Alternative",
+         "Prog-Rock/Art Rock"
+        ],
+        "isCompilation": false,
+        "isComplete": true,
+        "isMasteredForItunes": false,
+        "isSingle": false,
+        "name": "The King of Limbs",
+        "playParams": {
+         "id": "1109714965",
+         "kind": "album"
+        },
+        "recordLabel": "XL Recordings",
+        "releaseDate": "2011-02-18",
+        "trackCount": 8,
+        "upc": "634904078768",
+        "url": "https://music.apple.com/us/album/the-king-of-limbs/1109714965"
+       }
+      },
+      {
+       "id": "1160370310",
+       "type": "albums",
+       "href": "/v1/catalog/us/albums/1160370310",
+       "attributes": {
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "0e1019",
+         "height": 4000,
+         "textColor1": "d0bf56",
+         "textColor2": "e59e44",
+         "textColor3": "a99c4a",
+         "textColor4": "ba823b",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/13/39/3c/13393c12-a1cf-445f-5dd0-07988cbe540d/634904032449.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "contentRating": "explicit",
+        "copyright": "℗ 2007 LLLP LLP under exclusive license to XL Recordings Ltd",
+        "editorialNotes": {
+         "short": "Additional sonic sketches from their 2007 triumph.",
+         "standard": "Take away the industry-shaking specifics of <i>In Rainbows</i> and it still stands as a monument to Radiohead hitting their creative stride. And there’s no greater evidence of that fact than this, an eight-track collection of bonus cuts. There’s sonic doodling, of course (see the abrasive skronk of “Bangers + Mash”), but fully-formed tracks like “Up on the Ladder” and elegiac closer “4 Minute Warning” capture a band brimming over with can’t-miss imagination."
+        },
+        "genreNames": [
+         "Alternative",
+         "Music",
+         "Rock",
+         "Prog-Rock/Art Rock",
+         "Adult Alternative"
+        ],
+        "isCompilation": false,
+        "isComplete": true,
+        "isMasteredForItunes": false,
+        "isSingle": false,
+        "name": "In Rainbows Disk 2",
+        "playParams": {
+         "id": "1160370310",
+         "kind": "album"
+        },
+        "recordLabel": "XL Recordings",
+        "releaseDate": "2007-12-03",
+        "trackCount": 8,
+        "upc": "634904032449",
+        "url": "https://music.apple.com/us/album/in-rainbows-disk-2/1160370310"
+       }
+      }
+     ]
+    },
+    "top-songs": {
+     "href": "/v1/catalog/us/artists/657515/view/top-songs",
+     "next": "/v1/catalog/us/artists/657515/view/top-songs?offset=10",
+     "attributes": {
+      "title": "Top Songs"
+     },
+     "data": [
+      {
+       "id": "1097862231",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097862231",
+       "attributes": {
+        "albumName": "Pablo Honey",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "ded9d2",
+         "height": 4000,
+         "textColor1": "0e0a03",
+         "textColor2": "3e2217",
+         "textColor3": "38332c",
+         "textColor4": "5e473c",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/78/a4/ec/78a4ec7b-c6d6-c9c8-441b-660486e56a89/634904077969.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Albert Hammond, Colin Greenwood, Ed O'Brien, Jonny Greenwood, Mike Hazlewood, Phil Selway & Thom Yorke",
+        "contentRating": "explicit",
+        "discNumber": 1,
+        "durationInMillis": 238640,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9200070",
+        "name": "Creep",
+        "playParams": {
+         "id": "1097862231",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/91/07/a1/9107a13f-9179-34a9-89d6-a9569777195c/mzaf_9360083878255871917.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1992-09-21",
+        "trackNumber": 2,
+        "url": "https://music.apple.com/us/album/creep/1097862062?i=1097862231"
+       }
+      },
+      {
+       "id": "1097861834",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097861834",
+       "attributes": {
+        "albumName": "OK Computer",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "fefeff",
+         "height": 4000,
+         "textColor1": "031623",
+         "textColor2": "332b2c",
+         "textColor3": "35454f",
+         "textColor4": "5b5556",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+        "discNumber": 1,
+        "durationInMillis": 299560,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9701374",
+        "name": "Let Down",
+        "playParams": {
+         "id": "1097861834",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/cd/65/58/cd6558df-2ba2-6f8e-25a0-d2db94494f74/mzaf_5583409847288875892.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1997-05-21",
+        "trackNumber": 5,
+        "url": "https://music.apple.com/us/album/let-down/1097861387?i=1097861834"
+       }
+      },
+      {
+       "id": "1097861842",
+       "type": "songs",
+       "href": "/v1/catalog/us/songs/1097861842",
+       "attributes": {
+        "albumName": "OK Computer",
+        "artistName": "Radiohead",
+        "artwork": {
+         "bgColor": "fefeff",
+         "height": 4000,
+         "textColor1": "031623",
+         "textColor2": "332b2c",
+         "textColor3": "35454f",
+         "textColor4": "5b5556",
+         "url": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/{w}x{h}bb.jpg",
+         "width": 4000
+        },
+        "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+        "discNumber": 1,
+        "durationInMillis": 229120,
+        "genreNames": [
+         "Alternative",
+         "Music"
+        ],
+        "hasLyrics": true,
+        "isAppleDigitalMaster": false,
+        "isrc": "GBAYE9700386",
+        "name": "No Surprises",
+        "playParams": {
+         "id": "1097861842",
+         "kind": "song"
+        },
+        "previews": [
+         {
+          "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f0/2a/fa/f02afaad-0a7f-9ceb-1236-55ef3d388061/mzaf_10063872040766906863.plus.aac.p.m4a"
+         }
+        ],
+        "releaseDate": "1997-05-21",
+        "trackNumber": 10,
+        "url": "https://music.apple.com/us/album/no-surprises/1097861387?i=1097861842"
+       }
+      }
+     ]
+    }
+   },
+   "meta": {
+    "views": {
+     "order": [
+      "top-songs",
+      "full-albums"
+     ]
+    }
+   }
+  }
+ ]
+}

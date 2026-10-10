@@ -233,6 +233,22 @@ const (
 	AuthNotDetermined AuthStatus = "notDetermined"
 )
 
+// LateAuthorizer is implemented by a Player whose authorization can
+// complete after Authorize first answers AuthNotDetermined, as a browser
+// the user still has to sign in to: when AuthorizesLate reports true,
+// asking Authorize again later may answer AuthAuthorized. A Player that
+// does not implement it is refused for good by AuthNotDetermined.
+type LateAuthorizer interface {
+	AuthorizesLate() bool
+}
+
+// AuthorizationHinter is implemented by a LateAuthorizer that can tell the
+// user how to authorize it while it waits, such as the command that signs
+// in. AuthorizationHint is a short lowercase instruction; "" gives none.
+type AuthorizationHinter interface {
+	AuthorizationHint() string
+}
+
 // ClampVolume limits a volume level to 0...1; NaN becomes 0.
 func ClampVolume(level float64) float64 {
 	if math.IsNaN(level) {

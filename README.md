@@ -45,12 +45,12 @@
   <img src="docs/assets/demo/overview.gif" width="900" alt="nu11signal in action: launching from the shell, the boot splash, opening a playlist, playing a song, and the data rain reacting to the music">
 </p>
 
-> macOS and Linux. Apple Music needs macOS and a subscription; on Linux it plays your local music files. Not affiliated with Apple.
+> macOS and Linux. Apple Music needs a subscription; Linux support is experimental and uses Apple's web player in a hidden Chrome or Chromium with Widevine. Local files work on both. Not affiliated with Apple.
 
 ## What it does
 
-- **Apple Music in the terminal.** It plays through a tiny windowless MusicKit helper (near 0% CPU), not a browser or the Music app. [Architecture →](docs/architecture.md)
-- **Your own music files.** mp3, flac, ogg and wav from `~/Music` play beside Apple Music; on Linux, on their own. [Local files →](docs/usage.md#local-files)
+- **Apple Music in the terminal.** On macOS it plays through a tiny windowless MusicKit helper (near 0% CPU), not a browser or the Music app. On Linux (experimental), it uses Apple's web player in a hidden Chrome or Chromium with Widevine, a heavier backend. [Architecture →](docs/architecture.md) · [Linux setup →](docs/usage.md#apple-music-on-linux-experimental)
+- **Your own music files.** mp3, flac, ogg and wav from `~/Music` play beside Apple Music on macOS and Linux, or on their own without a browser. [Local files →](docs/usage.md#local-files)
 - **Search and browse the catalog.** Live suggestions, artists, albums and playlists; love songs and edit playlists on the way. [Browsing →](docs/usage.md#browsing-the-catalog)
 
 <img width="100%" src="docs/assets/demo/search.gif" alt="SEARCH in action: recent searches, live suggestions while typing, then an artist page with its top songs, albums and playlists, and a song playing">
@@ -72,7 +72,7 @@ brew install --cask wahh-22/tap/nu11signal
 nu11signal
 ```
 
-Linux (x86_64 or ARM64, local files), with [Homebrew on Linux](https://docs.brew.sh/Homebrew-on-Linux):
+Linux (x86_64 or ARM64, Apple Music experimental and local files), with [Homebrew on Linux](https://docs.brew.sh/Homebrew-on-Linux):
 
 ```sh
 brew install wahh-22/tap/nu11signal
@@ -90,7 +90,7 @@ from source are covered in [Install](docs/install.md) and
 | [Usage](docs/usage.md) | The catalog, the library, local files, keys, mouse, settings, update check |
 | [Signal effects and rain](docs/effects.md) | Glitches, boot and shutdown splashes, intros, the rain |
 | [App volume and spectrum](docs/audio.md) | The independent `VOL` and the live spectrum |
-| [Architecture](docs/architecture.md) | Go UI, Swift helper, JSON lines protocol |
+| [Architecture](docs/architecture.md) | Go UI, Swift helper, Linux web player, JSON lines protocol |
 | [Building from source](docs/building.md) | Requirements, signing setup, make targets |
 | [Releasing](docs/releasing.md) | Signed releases, Linux archives, the Homebrew tap |
 | [Troubleshooting](docs/troubleshooting.md) | Common failures and fixes |

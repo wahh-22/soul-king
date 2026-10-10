@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "id": "p.D4e5F6g7H8i9J0",
+      "type": "library-playlists",
+      "href": "/v1/me/library/playlists/p.D4e5F6g7H8i9J0",
+      "attributes": {
+        "canEdit": true,
+        "name": "Road Trip",
+        "isPublic": false,
+        "hasCatalog": true,
+        "dateAdded": "2022-07-04T12:00:00Z",
+        "playParams": {"id": "p.D4e5F6g7H8i9J0", "kind": "playlist", "isLibrary": true}
+      }
+    },
+    {
+      "id": "p.bad/../id",
+      "type": "library-playlists",
+      "attributes": {"canEdit": true, "name": "Unusable Id"}
+    },
+    {
+      "id": "p.E5f6G7h8I9j0K1",
+      "type": "library-playlists",
+      "href": "/v1/me/library/playlists/p.E5f6G7h8I9j0K1",
+      "attributes": {
+        "canEdit": true,
+        "name": "Weekend Mix",
+        "isPublic": false,
+        "hasCatalog": true,
+        "dateAdded": "2024-05-11T09:00:00Z",
+        "playParams": {"id": "p.E5f6G7h8I9j0K1", "kind": "playlist", "isLibrary": true}
+      }
+    }
+  ],
+  "meta": {"total": 6}
+}

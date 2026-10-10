@@ -20,6 +20,7 @@ func TestParseFlags(t *testing.T) {
 		{"single-dash version", []string{"-version"}, options{version: true}},
 		{"calm starts the effects off", []string{"--demo", "--calm"}, options{demo: true, calm: true}},
 		{"local files only", []string{"--local"}, options{local: true}},
+		{"apple music login", []string{"--apple-music-login"}, options{login: true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1,0 +1,519 @@
+{
+ "results": {
+  "albums": {
+   "href": "/v1/catalog/us/search?limit=3&term=radiohead&types=albums",
+   "next": "/v1/catalog/us/search?offset=3&term=radiohead&types=albums",
+   "data": [
+    {
+     "id": "1097861387",
+     "type": "albums",
+     "href": "/v1/catalog/us/albums/1097861387",
+     "attributes": {
+      "artistName": "Radiohead",
+      "artwork": {
+       "bgColor": "fefeff",
+       "height": 4000,
+       "textColor1": "031623",
+       "textColor2": "332b2c",
+       "textColor3": "35454f",
+       "textColor4": "5b5556",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/{w}x{h}bb.jpg",
+       "width": 4000
+      },
+      "copyright": "℗ 1997 XL Recordings Ltd",
+      "editorialNotes": {
+       "short": "A dozen songs of terror and oblivion and hope.",
+       "standard": "<b>100 Best Albums</b> Few albums so audacious, innovative, and anxious have ever captured the popular imagination like <i>OK Computer</i>, the 1997 Radiohead triumph that not only announced a new frontier of rock exploration, but also articulated budding pre-millennial interest in—and concern over—our technological toys. Here are a dozen songs of terror and oblivion, their singer so alienated by the society spinning around him that he pines to be abducted by aliens so that he may witness “the world as I’d love to see it.” There are car crashes and stolen thoughts, clouds of death and specters of persecution, malevolent robots and a Macintosh LC II that deadpans the new rules for living. It remains a deeply unsettling song cycle that is also deeply magnetic, its reordering of rock ’n’ roll’s sounds with classical ambition making it one of the form’s most radical and necessary statements.\n\nRadiohead had not learned its lessons from “Creep.” After wearing themselves thin promoting their first album, they rode the road even harder for <i>The Bends</i>, playing nearly 200 shows in 1995 alone and prowling the United States in a bus emblazoned with an airbrushed stallion. Thom Yorke crowded spiral-bound notebooks with his unease and expressions of isolation, even as he and his pals moved from one crowded room to another. But Radiohead’s relentless devotion to promotion afforded them complete creative control from a label surprised by their success. They reassembled the dream team that had first worked on <i>The Bends</i>—young engineer turned trusted producer Nigel Godrich and artist Stanley Donwood—and decamped to a palatial estate in the British countryside to wrestle with their worries.\n\nDebates about Radiohead’s motivations and intentions have raged since <i>OK Computer</i>’s release: Were Yorke and the band lashing out at the work that was almost killing them, or were they concerned about what technology would do to our humanity? Both roots, however, lead to the same sense of desperate isolation that <i>OK Computer</i> captures so well. The narrator in “Subterranean Homesick Alien” can no longer smell their surroundings, while the survivor in “Karma Police” can no longer think their thoughts in safety. Love is a final act of desperation during “Exit Music (For a Film),” friendship a cover for raptor-like predation during “Climbing Up the Walls.” The band animates these ideas perfectly, alternately stripping the arrangement until it feels like an icy chill, or adding 16 violins clawing at each other to invoke mental claustrophobia. <i>OK Computer</i> is every lump in your throat, turned into a succession of anthems.\n\nFor all of its dread, <i>OK Computer</i> is ultimately an act of hope, the expression in a belief that our inexorable path of progress does not have to cost us our goodness. Above the hangman riff of “Lucky,” Yorke pines to be pulled back from this abyss’ edge, to be resurrected in love. “It’s gonna be a glorious day,” he sings, and you have to believe it at least <i>could</i> be true. And if there is a remedy to the dizzying pace of, well, everything, it’s simple enough: “Idiot, slow down,” he sings for the last words of closer “The Tourist,” his falsetto newly resolute. “Slow down.” In the decades since <i>OK Computer</i> made Radiohead rock’s new standard-bearers, its grievances—namely, our accelerating isolation—have only mounted. But the answers and the hope it holds linger still.",
+       "tagline": "Featured in 100 Best Albums"
+      },
+      "genreNames": [
+       "Alternative",
+       "Music",
+       "Electronic",
+       "Pop",
+       "Britpop",
+       "Rock",
+       "Adult Alternative"
+      ],
+      "isCompilation": false,
+      "isComplete": true,
+      "isMasteredForItunes": false,
+      "isSingle": false,
+      "name": "OK Computer",
+      "playParams": {
+       "id": "1097861387",
+       "kind": "album"
+      },
+      "recordLabel": "XL Recordings",
+      "releaseDate": "1997-05-21",
+      "trackCount": 12,
+      "upc": "634904078164",
+      "url": "https://music.apple.com/us/album/ok-computer/1097861387"
+     }
+    },
+    {
+     "id": "1109714933",
+     "type": "albums",
+     "href": "/v1/catalog/us/albums/1109714933",
+     "attributes": {
+      "artistName": "Radiohead",
+      "artwork": {
+       "bgColor": "1e1807",
+       "height": 4000,
+       "textColor1": "d0c741",
+       "textColor2": "e9872e",
+       "textColor3": "aca436",
+       "textColor4": "c07126",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/dd/50/c7/dd50c790-99ac-d3d0-5ab8-e3891fb8fd52/634904032463.png/{w}x{h}bb.jpg",
+       "width": 4000
+      },
+      "copyright": "℗ 2007 LLLP LLP under exclusive license to XL Recordings Ltd",
+      "editorialNotes": {
+       "short": "A groundbreaking, hitmaking classic.",
+       "standard": "For those who grew up during the streaming era, it may be impossible to grasp just how monumental the announcement of Radiohead’s seventh album, <i>In Rainbows</i>, seemed in 2007. But in early October, guitarist Jonny Greenwood logged onto the band’s blog to announce that not only was the group’s long-awaited new record finished, but that it would be available online in 10 days—and that fans could pay whatever they wanted for the files (including, well, nothing). Debates have raged about the consequences of Radiohead’s decision ever since, but it was a bold response to the onslaught of digital piracy. Radiohead had fulfilled its contract with EMI, becoming one of the world’s biggest rock bands in the world. What did the band members have to lose by seeing how much listeners actually valued their music?\n\nThough that decision dominated headlines, <i>In Rainbows</i> presented another bit of unexpected upheaval in Radiohead’s world: After years of in-studio sonic experimentation, the group had come back to earth, making a 10-song, 42-minute record with actual, you know, <i>singles</i>. And <i>guitars</i>. And lyrics about loneliness and love and yearning. This was Radiohead reverting to its past—slightly. Sure, you could hear the experimental vapors of <i>Kid A</i> in the tessellated textures of “Reckoner” and the skitters of “15 Step.” And you could sense the luminous aggression of <i>Hail to the Thief</i> in the caterwauls of “Bodysnatchers.” But then there was the gorgeous-if-fretful “Nude,” a song Radiohead had been trying to get right for a decade: With its preening new bassline, it became their first US Top 40 hit since “Creep.” And on “House of Cards,” a song unabashedly about sex and all the places it could lead, the bandmates sound like a dubplate version of their former rock band selves, all lust-drunk and wobbling.\n\nRadiohead may have seemed newly at ease on <i>In Rainbows</i>, but making the record nearly broke the band. For the first time since <i>OK Computer</i>, the group members tried working with a producer other than Nigel Godrich—only to abandon the attempt, and instead take some tunes on the road. They eventually reunited with Godrich, who forced the bandmates—some of whom were new fathers—to focus on music, sequestering them in a broken-down country palace, and making them sort through all their fragments and false starts.\n\nThe effort yielded some of Radiohead’s most memorable songs, as though time and touring had taught the group to find this material’s essence. The impossible guitar tangle of “Weird Fishes/Arpeggi” finds a climax worthy of the best post-rock bands, as does the brief acoustic phantom, “Faust Arp.” Most stunning, though, might be the album’s finale, “Videotape.” Equal parts love note and goodbye letter, “Videotape” first arrived as a maximalist rush onstage at the Hammersmith Ballroom in 2006. But the band members kept peeling back layers and dropping parts in the studio, until all that remained were skeletal piano and rhythms that cracked apart and eventually floated skyward—as though Radiohead was drifting off into the void."
+      },
+      "genreNames": [
+       "Alternative",
+       "Music",
+       "Rock",
+       "Prog-Rock/Art Rock",
+       "Adult Alternative"
+      ],
+      "isCompilation": false,
+      "isComplete": true,
+      "isMasteredForItunes": false,
+      "isSingle": false,
+      "name": "In Rainbows",
+      "playParams": {
+       "id": "1109714933",
+       "kind": "album"
+      },
+      "recordLabel": "XL Recordings",
+      "releaseDate": "2007-10-10",
+      "trackCount": 10,
+      "upc": "634904032463",
+      "url": "https://music.apple.com/us/album/in-rainbows/1109714933"
+     }
+    },
+    {
+     "id": "1097862870",
+     "type": "albums",
+     "href": "/v1/catalog/us/albums/1097862870",
+     "attributes": {
+      "artistName": "Radiohead",
+      "artwork": {
+       "bgColor": "0a0a08",
+       "height": 4000,
+       "textColor1": "e2eaee",
+       "textColor2": "d3d2d1",
+       "textColor3": "b7bdc0",
+       "textColor4": "abaaa8",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/bd/8e/13/bd8e1358-b367-a689-cb84-cebd0b067dc4/634904078263.png/{w}x{h}bb.jpg",
+       "width": 4000
+      },
+      "copyright": "℗ 2000 XL Recordings Ltd",
+      "editorialNotes": {
+       "short": "How do you follow up a revolutionary album? With a more revolutionary one.",
+       "standard": "<b>100 Best Albums</b> In three albums released over the course of four years, Radiohead had done the unlikely: They had gone from potential one-hit wonders cresting a wave of reverent rock to a more atmospheric version of such to a band that then broke many of those rules and reconfigured the lexicon on 1997’s <i>OK Computer</i>. So, what was a band suddenly touted for making “the best record of all time” to do, aside from tour until they were threadbare as was Radiohead’s wont? They were, with some stress and shouting and madness, going to throw away the rules altogether. In turn, <i>Kid A</i> became their second revolutionary act in as many records.\n\nThom Yorke had begun to resist the idea that he was in a rock band at all, that Radiohead instead was rather an expressive outlet in search of the best way to say something. He found, though, that he had nothing to say, that every idea for a song was better suited for the trash. He went on long walks in the English rain and prowled around old buildings, listening to the vertiginous electronic vanguard of, say, Aphex Twin and Autrechre. New ideas began to emerge, as did new equipment in their Oxford studio—modular synths, samplers, a haunted theremin contemporary called the ondes Martenot.\n\n<i>Kid A</i> did not introduce these intentions slowly. With its seasick sequences and Yorke’s multiplied vocal lines folding in and over and around one another like an Escher sketch, “Everything In Its Right Place” is both taunt and gambit, a little wink from the band that had gone from “Creep” to these so-called creepy sounds. That was simply the start. “Idioteque” brazenly subverted dance-floor tropes, not only with drums so blown out they suggested a bullet’s report, but also Yorke’s purred lines about Cold War anxiety. If the acoustic strums, distant hums, and rising rhythm of “How to Disappear Completely” at least suggested something recognizable for those with The Bends, its chaser, “Treefingers,” ferried it away with a dimly phosphorescent electronic ripple, as if the sun had forever set just below the horizon.\n\nThe demented bass and howling horns of “The National Anthem,” the harp sweeps and operatic tremors of “Motion Picture Soundtrack,” the refracted guitars and babbling circuity of “In Limbo”: Radiohead found new space to explore on every <i>Kid A</i> track. Each song, though, was anchored to a hook—however hidden it first appeared—something familiar as the band set off into often-unfamiliar spaces.\n\nPopular and critical opinion about <i>Kid A</i> was initially mixed. Had Yorke finally teetered off the edge? Were they a bunch of scene-hopping poseurs? But as people found those melodies and made their own meanings from its mondegreens, they understood that Radiohead not only meant this new avenue of expression but also needed it. This was a new arena for old blues, fit for the 21st century—and helping shape it, too.",
+       "tagline": "Featured in 100 Best Albums"
+      },
+      "genreNames": [
+       "Alternative",
+       "Music",
+       "Rock",
+       "Prog-Rock/Art Rock",
+       "Electronic",
+       "Adult Alternative"
+      ],
+      "isCompilation": false,
+      "isComplete": true,
+      "isMasteredForItunes": false,
+      "isSingle": false,
+      "name": "Kid A",
+      "playParams": {
+       "id": "1097862870",
+       "kind": "album"
+      },
+      "recordLabel": "XL Recordings",
+      "releaseDate": "2000-10-02",
+      "trackCount": 11,
+      "upc": "634904078263",
+      "url": "https://music.apple.com/us/album/kid-a/1097862870"
+     }
+    }
+   ]
+  },
+  "artists": {
+   "href": "/v1/catalog/us/search?limit=3&term=radiohead&types=artists",
+   "next": "/v1/catalog/us/search?offset=3&term=radiohead&types=artists",
+   "data": [
+    {
+     "id": "657515",
+     "type": "artists",
+     "href": "/v1/catalog/us/artists/657515",
+     "attributes": {
+      "artwork": {
+       "bgColor": "131313",
+       "height": 1050,
+       "textColor1": "eba140",
+       "textColor2": "e29438",
+       "textColor3": "c08437",
+       "textColor4": "b87a31",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/8a/49/84/8a498443-718e-40c0-404e-d1380c2352b7/ami-identity-531db02daa273271c643ba631a46b9d5-2026-09-07T07-12-12.872Z_cropped.png/{w}x{h}bb.jpg",
+       "width": 1050
+      },
+      "genreNames": [
+       "Alternative"
+      ],
+      "name": "Radiohead",
+      "url": "https://music.apple.com/us/artist/radiohead/657515"
+     },
+     "relationships": {
+      "albums": {
+       "href": "/v1/catalog/us/artists/657515/albums",
+       "next": "/v1/catalog/us/artists/657515/albums?offset=25",
+       "data": [
+        {
+         "id": "1097861387",
+         "type": "albums",
+         "href": "/v1/catalog/us/albums/1097861387"
+        },
+        {
+         "id": "1109714933",
+         "type": "albums",
+         "href": "/v1/catalog/us/albums/1109714933"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "id": "156334706",
+     "type": "artists",
+     "href": "/v1/catalog/us/artists/156334706",
+     "attributes": {
+      "artwork": {
+       "bgColor": "00167a",
+       "height": 1120,
+       "textColor1": "dbb799",
+       "textColor2": "cfa687",
+       "textColor3": "af9793",
+       "textColor4": "a68984",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/3e/1c/8d/3e1c8ddf-90c9-bba3-e0e5-d0020666f239/ami_U003aidentity_U003aedd7ff071086cf77813db2cc769437ab-2026-10-05T16-03-39.015Z_cropped.png/{w}x{h}bb.jpg",
+       "width": 1120
+      },
+      "genreNames": [
+       "Pop"
+      ],
+      "name": "Ed O'Brien",
+      "url": "https://music.apple.com/us/artist/ed-obrien/156334706"
+     },
+     "relationships": {
+      "albums": {
+       "href": "/v1/catalog/us/artists/156334706/albums",
+       "data": [
+        {
+         "id": "1497027406",
+         "type": "albums",
+         "href": "/v1/catalog/us/albums/1497027406"
+        },
+        {
+         "id": "1874551790",
+         "type": "albums",
+         "href": "/v1/catalog/us/albums/1874551790"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "id": "39753073",
+     "type": "artists",
+     "href": "/v1/catalog/us/artists/39753073",
+     "attributes": {
+      "artwork": {
+       "bgColor": "fbfbf8",
+       "height": 2400,
+       "textColor1": "060606",
+       "textColor2": "221f1f",
+       "textColor3": "373736",
+       "textColor4": "4d4b4a",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/b0/09/53/b00953ca-d77a-7d08-d4d4-298c84aa17f4/ami-identity-40cfd6ea230d3f9c15908a64b4bd5cd0-2026-03-24T10-32-45.159Z_cropped.png/{w}x{h}bb.jpg",
+       "width": 2400
+      },
+      "genreNames": [
+       "Alternative"
+      ],
+      "name": "Thom Yorke",
+      "url": "https://music.apple.com/us/artist/thom-yorke/39753073"
+     },
+     "relationships": {
+      "albums": {
+       "href": "/v1/catalog/us/artists/39753073/albums",
+       "next": "/v1/catalog/us/artists/39753073/albums?offset=25",
+       "data": [
+        {
+         "id": "1491639343",
+         "type": "albums",
+         "href": "/v1/catalog/us/albums/1491639343"
+        },
+        {
+         "id": "1467347588",
+         "type": "albums",
+         "href": "/v1/catalog/us/albums/1467347588"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  "playlists": {
+   "href": "/v1/catalog/us/search?limit=3&term=radiohead&types=playlists",
+   "next": "/v1/catalog/us/search?offset=3&term=radiohead&types=playlists",
+   "data": [
+    {
+     "id": "pl.fdc21e2843764a8a99076ad5b6c40f4d",
+     "type": "playlists",
+     "href": "/v1/catalog/us/playlists/pl.fdc21e2843764a8a99076ad5b6c40f4d",
+     "attributes": {
+      "artwork": {
+       "bgColor": "131313",
+       "height": 1080,
+       "textColor1": "eba140",
+       "textColor2": "e29438",
+       "textColor3": "c08437",
+       "textColor4": "b87a31",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/8a/49/84/8a498443-718e-40c0-404e-d1380c2352b7/ami-identity-531db02daa273271c643ba631a46b9d5-2026-09-07T07-12-12.872Z_cropped.png/{w}x{h}SC.FPESS04.jpg?l=en-US",
+       "width": 1080
+      },
+      "curatorName": "Apple Music Alternative",
+      "description": {
+       "short": "Their continued experimentation has only bolstered their legend.",
+       "standard": "As hard as it is to believe now, Radiohead’s “Creep” didn’t hit until nearly a year after its 1992 release, eventually recasting the Oxford ensemble as inheritors to the kind of alternative anthem championed by U2. The worldwide success of this disarmingly intimate ode to alienation would have proven a fluke if the band hadn’t repeated the trick with 1995’s “Fake Plastic Trees,” a strummed then string-swept daydream through eerily glossy surfaces both human and otherwise. Even then, few could have predicted the dystopian scope and artistic ambition of 1997’s <i>OK Computer</i>, which later made it onto Apple Music’s 100 Best Albums list. Heralded by the gorgeous yet outright ominous “Paranoid Android” and still another generational lost-soul ballad in “Karma Police,” that record announced Radiohead as The Beatles of their era, in terms of balancing both commercial and critical success with emboldened experimentation.\n\nFree to transform at will from song to song, the band began a new era with 2000’s <i>Kid A</i>, releasing no singles and embracing abstract electronics on opener “Everything in Its Right Place” and “Idioteque.” If their next few albums seemed to shrug off commercial concerns entirely, they still yielded such indelible turns as 2001’s stumbling piano amble “Pyramid Song,” 2003’s quiet-turned-loud “There, There,” 2009’s anti-gravity phantom “All I Need,” 2011’s squelching “Lotus Flower,” and 2016’s urgent “Burn the Witch.” All explored anew while deepening the alchemy between unmoored singer/lyricist Thom Yorke, shape-shifting guitarist Jonny Greenwood, and the other players. No wonder Radiohead still remain the high-water mark for bands who can do exactly what they want and still enjoy a decades-spanning audience."
+      },
+      "isChart": false,
+      "lastModifiedDate": "2025-11-05T18:39:55Z",
+      "name": "Radiohead Essentials",
+      "playParams": {
+       "id": "pl.fdc21e2843764a8a99076ad5b6c40f4d",
+       "kind": "playlist",
+       "versionHash": "7359c54f1b2ba1d0ce824b77d4b33b6aee6bfa37dd3701d0a73337e08d02f018"
+      },
+      "playlistType": "editorial",
+      "url": "https://music.apple.com/us/playlist/radiohead-essentials/pl.fdc21e2843764a8a99076ad5b6c40f4d"
+     }
+    },
+    {
+     "id": "pl.c1b72602d9f24dc9adb6e0bfd1e70573",
+     "type": "playlists",
+     "href": "/v1/catalog/us/playlists/pl.c1b72602d9f24dc9adb6e0bfd1e70573",
+     "attributes": {
+      "artwork": {
+       "bgColor": "131313",
+       "height": 1080,
+       "textColor1": "eba140",
+       "textColor2": "e29438",
+       "textColor3": "c08437",
+       "textColor4": "b87a31",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/8a/49/84/8a498443-718e-40c0-404e-d1380c2352b7/ami-identity-531db02daa273271c643ba631a46b9d5-2026-09-07T07-12-12.872Z_cropped.png/{w}x{h}SC.FPCHL02.jpg?l=en-US",
+       "width": 1080
+      },
+      "curatorName": "Apple Music Alternative",
+      "isChart": false,
+      "lastModifiedDate": "2023-04-11T13:54:48Z",
+      "name": "Radiohead: Chill",
+      "playParams": {
+       "id": "pl.c1b72602d9f24dc9adb6e0bfd1e70573",
+       "kind": "playlist",
+       "versionHash": "23c4f9698e25d38daa59b769c8186227a9e500fb647d1e99fcd8ab43cd8ce460"
+      },
+      "playlistType": "editorial",
+      "url": "https://music.apple.com/us/playlist/radiohead-chill/pl.c1b72602d9f24dc9adb6e0bfd1e70573"
+     }
+    },
+    {
+     "id": "pl.1631c4a4658f43b88cc409c4ebb9c8fb",
+     "type": "playlists",
+     "href": "/v1/catalog/us/playlists/pl.1631c4a4658f43b88cc409c4ebb9c8fb",
+     "attributes": {
+      "artwork": {
+       "bgColor": "131313",
+       "height": 1080,
+       "textColor1": "eba140",
+       "textColor2": "e29438",
+       "textColor3": "c08437",
+       "textColor4": "b87a31",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/8a/49/84/8a498443-718e-40c0-404e-d1380c2352b7/ami-identity-531db02daa273271c643ba631a46b9d5-2026-09-07T07-12-12.872Z_cropped.png/{w}x{h}SC.FPINF03.jpg?l=en-US",
+       "width": 1080
+      },
+      "curatorName": "Apple Music Alternative",
+      "description": {
+       "short": "Everything from jazz to techno informs the alt-rock icons' sound.",
+       "standard": "Few artists so generously rep their musical heroes as Radiohead, who routinely shine the spotlight on their favorite music via DJ sets, studio broadcasts, and top-10 lists. The eclectic acts who have influenced the band during their long, varied career include U2, Autechre, and Miles Davis."
+      },
+      "isChart": false,
+      "lastModifiedDate": "2023-06-07T01:06:28Z",
+      "name": "Radiohead: Influences",
+      "playParams": {
+       "id": "pl.1631c4a4658f43b88cc409c4ebb9c8fb",
+       "kind": "playlist",
+       "versionHash": "e8bcea51cb659cd764c3807ccfe36f42d0e8e0977ca08d3de2bacbef1ca7165b"
+      },
+      "playlistType": "editorial",
+      "url": "https://music.apple.com/us/playlist/radiohead-influences/pl.1631c4a4658f43b88cc409c4ebb9c8fb"
+     }
+    }
+   ]
+  },
+  "songs": {
+   "href": "/v1/catalog/us/search?limit=3&term=radiohead&types=songs",
+   "next": "/v1/catalog/us/search?offset=3&term=radiohead&types=songs",
+   "data": [
+    {
+     "id": "1097862231",
+     "type": "songs",
+     "href": "/v1/catalog/us/songs/1097862231",
+     "attributes": {
+      "albumName": "Pablo Honey",
+      "artistName": "Radiohead",
+      "artwork": {
+       "bgColor": "ded9d2",
+       "height": 4000,
+       "textColor1": "0e0a03",
+       "textColor2": "3e2217",
+       "textColor3": "38332c",
+       "textColor4": "5e473c",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/78/a4/ec/78a4ec7b-c6d6-c9c8-441b-660486e56a89/634904077969.png/{w}x{h}bb.jpg",
+       "width": 4000
+      },
+      "composerName": "Albert Hammond, Colin Greenwood, Ed O'Brien, Jonny Greenwood, Mike Hazlewood, Phil Selway & Thom Yorke",
+      "contentRating": "explicit",
+      "discNumber": 1,
+      "durationInMillis": 238640,
+      "genreNames": [
+       "Alternative",
+       "Music"
+      ],
+      "hasLyrics": true,
+      "isAppleDigitalMaster": false,
+      "isrc": "GBAYE9200070",
+      "name": "Creep",
+      "playParams": {
+       "id": "1097862231",
+       "kind": "song"
+      },
+      "previews": [
+       {
+        "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/91/07/a1/9107a13f-9179-34a9-89d6-a9569777195c/mzaf_9360083878255871917.plus.aac.p.m4a"
+       }
+      ],
+      "releaseDate": "1992-09-21",
+      "trackNumber": 2,
+      "url": "https://music.apple.com/us/album/creep/1097862062?i=1097862231"
+     }
+    },
+    {
+     "id": "1097861834",
+     "type": "songs",
+     "href": "/v1/catalog/us/songs/1097861834",
+     "attributes": {
+      "albumName": "OK Computer",
+      "artistName": "Radiohead",
+      "artwork": {
+       "bgColor": "fefeff",
+       "height": 4000,
+       "textColor1": "031623",
+       "textColor2": "332b2c",
+       "textColor3": "35454f",
+       "textColor4": "5b5556",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/{w}x{h}bb.jpg",
+       "width": 4000
+      },
+      "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+      "discNumber": 1,
+      "durationInMillis": 299560,
+      "genreNames": [
+       "Alternative",
+       "Music"
+      ],
+      "hasLyrics": true,
+      "isAppleDigitalMaster": false,
+      "isrc": "GBAYE9701374",
+      "name": "Let Down",
+      "playParams": {
+       "id": "1097861834",
+       "kind": "song"
+      },
+      "previews": [
+       {
+        "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/cd/65/58/cd6558df-2ba2-6f8e-25a0-d2db94494f74/mzaf_5583409847288875892.plus.aac.p.m4a"
+       }
+      ],
+      "releaseDate": "1997-05-21",
+      "trackNumber": 5,
+      "url": "https://music.apple.com/us/album/let-down/1097861387?i=1097861834"
+     }
+    },
+    {
+     "id": "1109715293",
+     "type": "songs",
+     "href": "/v1/catalog/us/songs/1109715293",
+     "attributes": {
+      "albumName": "In Rainbows",
+      "artistName": "Radiohead",
+      "artwork": {
+       "bgColor": "1e1807",
+       "height": 4000,
+       "textColor1": "d0c741",
+       "textColor2": "e9872e",
+       "textColor3": "aca436",
+       "textColor4": "c07126",
+       "url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/dd/50/c7/dd50c790-99ac-d3d0-5ab8-e3891fb8fd52/634904032463.png/{w}x{h}bb.jpg",
+       "width": 4000
+      },
+      "composerName": "Colin Greenwood, Ed O'Brien, Jonny Greenwood, Phil Selway & Thom Yorke",
+      "discNumber": 1,
+      "durationInMillis": 228747,
+      "genreNames": [
+       "Alternative",
+       "Music"
+      ],
+      "hasLyrics": true,
+      "isAppleDigitalMaster": false,
+      "isrc": "GBSTK0700005",
+      "name": "All I Need",
+      "playParams": {
+       "id": "1109715293",
+       "kind": "song"
+      },
+      "previews": [
+       {
+        "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/8e/c3/d5/8ec3d546-17d7-3322-662d-e09a89fbefd8/mzaf_7126755987197906481.plus.aac.p.m4a"
+       }
+      ],
+      "releaseDate": "2007-10-10",
+      "trackNumber": 5,
+      "url": "https://music.apple.com/us/album/all-i-need/1109714933?i=1109715293"
+     }
+    }
+   ]
+  }
+ },
+ "meta": {
+  "results": {
+   "order": [
+    "songs",
+    "albums",
+    "playlists",
+    "artists"
+   ],
+   "rawOrder": [
+    "songs",
+    "albums",
+    "playlists",
+    "artists"
+   ]
+  }
+ }
+}

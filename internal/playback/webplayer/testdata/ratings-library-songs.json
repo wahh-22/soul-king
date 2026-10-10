@@ -1,0 +1,10 @@
+{
+  "data": [
+    {
+      "id": "i.BBBB2222cccc",
+      "type": "ratings",
+      "href": "/v1/me/ratings/library-songs/i.BBBB2222cccc",
+      "attributes": {"value": 1}
+    }
+  ]
+}
